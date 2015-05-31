@@ -44,17 +44,28 @@ int main()
 
 	ClassifierTrain p;
 	//vector<PixelRGB> rgb;
-	Mat img=imread("D:\\JY\\JY_TrainingSamples\\hardexample\\57.jpg");
-	Mat img1=imread("D:\\JY\\JY_TrainingSamples\\hardexample\\30.jpg");
-	vector<Mat> mm;
-	mm.push_back(img);mm.push_back(img1);
-	p.getRGB(mm,1);
+	Mat p1=imread("D:\\JY\\JY_TrainingSamples\\color\\positive\\1.jpg");
+	Mat p2=imread("D:\\JY\\JY_TrainingSamples\\color\\positive\\2.jpg");
+	Mat p3=imread("D:\\JY\\JY_TrainingSamples\\color\\positive\\3.jpg");
+	vector<Mat> pos;
+	pos.push_back(p1);pos.push_back(p2);pos.push_back(p3);
 
-	
-	for(vector<PixelRGB>::iterator iter=p.rgb.begin();iter!=p.rgb.end();iter++)
-	{
-		cout<<"b:"<<(*iter).b<<"g:"<<(*iter).g<<"r:"<<(*iter).r<<"label:"<<(*iter).p_label<<endl;
-	}
-	cout<<"size:"<<p.rgb.size()<<endl;
+
+
+	Mat n1=imread("D:\\JY\\JY_TrainingSamples\\color\\negative\\1.jpg");
+	Mat n2=imread("D:\\JY\\JY_TrainingSamples\\color\\negative\\2.jpg");
+	Mat n3=imread("D:\\JY\\JY_TrainingSamples\\color\\negative\\3.jpg");
+	vector<Mat> neg;
+	neg.push_back(n1);neg.push_back(n2);neg.push_back(n3);
+	p.getRGB(pos,neg);
+
+
+	MySVM svm;
+	p.train();
+	//Mat test=imread("D:\\JY\\JY_TrainingSamples\\TrafficSign\\1.jpg");
+	Mat test=imread("D:\\JY\\JY_TrainingSamples\\TestIJCNN2013\\TestIJCNN2013Download\\00004.ppm");
+	Mat result=p.colorThreshold(test);
+	imshow("result",result);
+	waitKey();
 	system("pause");
 }

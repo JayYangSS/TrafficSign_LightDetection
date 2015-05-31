@@ -79,18 +79,18 @@ void ClassifierTrain::getRGB(vector<Mat> &imgPosArray,vector<Mat> &imgNegArray)
 
 
 
-void ClassifierTrain::train(MySVM& svm)
+void ClassifierTrain::train()
 {
 	int rows=rgb.size();//number of pixels
-	Mat rgbFeature=Mat::zeros(rows,3, CV_8UC1);//save the rgb information 
-	Mat rgbLabel=Mat::zeros(rows,1, CV_8UC1);//save the label information
+	Mat rgbFeature=Mat::zeros(rows,3, CV_32FC1);//save the rgb information 
+	Mat rgbLabel=Mat::zeros(rows,1, CV_32FC1);//save the label information
 	//存入Mat中
 	for (int j=0;j<rows;j++)
 	{
-		rgbFeature.at<int>(j,0)=rgb[j].b;
-		rgbFeature.at<int>(j,1)=rgb[j].g;
-		rgbFeature.at<int>(j,2)=rgb[j].r;
-		rgbLabel.at<int>(j,3)=rgb[j].p_label;
+		rgbFeature.at<float>(j,0)=rgb[j].b;
+		rgbFeature.at<float>(j,1)=rgb[j].g;
+		rgbFeature.at<float>(j,2)=rgb[j].r;
+		rgbLabel.at<float>(j,0)=rgb[j].p_label;
 	}
 
 	
@@ -104,7 +104,7 @@ void ClassifierTrain::train(MySVM& svm)
 }
 
 
-void ClassifierTrain::svmInfo(MySVM svm)
+void ClassifierTrain::svmInfo()
 {
 	int DescriptorDim = svm.get_var_count();
 	int supportVectorNum = svm.get_support_vector_count();
@@ -113,3 +113,40 @@ void ClassifierTrain::svmInfo(MySVM svm)
 }
 
 //TODO:预测颜色分类
+Mat ClassifierTrain::colorThreshold(Mat img)
+{
+	
+	int nr=img.rows;
+	int nc=img.cols;
+	Mat temp_pixel=Mat::zeros(1,3,CV_32FC1);
+	Mat SegImg=Mat::zeros(img.size(),CV_32FC1);
+	
+	if (nr!=SegImg.rows||nc!=SegImg.cols)
+	{
+		cout<<"size of test image and segImg does not match!"<<endl;
+		exit(0);
+	}
+	for(int j=0;j<nr;j++)
+	{
+		uchar* data=img.ptr<uchar>(j);
+		for (int i=0;i<3*nc;i=i+3)
+		{
+			temp_pixel.at<float>(0,0)=data[i];
+			temp_pixel.at<float>(0,1)=data[i+1];
+			temp_pixel.at<float>(0,2)=data[i+2];
+			float response=svm.predict(temp_pixel);
+			if (response==1.0)
+			{
+				SegImg.at<float>(j,i/3)=255;
+			}
+			else{
+				SegImg.at<float>(j,i/3)=0;
+			}
+		}
+	}
+
+
+	//imshow("result",SegImg);
+	//waitKey(10);
+	return SegImg;
+}

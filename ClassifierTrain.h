@@ -16,9 +16,11 @@ public:
 	~ClassifierTrain(void);
 
 	vector<PixelRGB> rgb;//存储一张图片的所有rgb
+	MySVM svm;
 	void ClassifierTrain::getRGB(vector<Mat> &imgPosArray,vector<Mat> &imgNegArray);//将相应类别的图像和标签输入
-	void train(MySVM& svm);
-	void svmInfo(MySVM svm);
+	void train();
+	void svmInfo();
+	Mat colorThreshold(Mat img);
 };
 
 

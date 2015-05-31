@@ -80,7 +80,7 @@ int SortRect(Mat src_test,int num,DetecResult *Rst,char Direct);
 
 class MySVM : public CvSVM
 {
-public:
+  public:
   //获得SVM的决策函数中的alpha数组
   double * get_alpha_vector()
   {
