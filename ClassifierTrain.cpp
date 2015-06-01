@@ -112,7 +112,9 @@ void ClassifierTrain::svmInfo()
 	cout<<"Dimension of svm:"<<DescriptorDim<<endl;
 }
 
-//TODO:预测颜色分类
+
+
+//TODO:修改svm参数，实现多颜色分类
 Mat ClassifierTrain::colorThreshold(Mat img)
 {
 	
@@ -144,9 +146,5 @@ Mat ClassifierTrain::colorThreshold(Mat img)
 			}
 		}
 	}
-
-
-	//imshow("result",SegImg);
-	//waitKey(10);
 	return SegImg;
 }
