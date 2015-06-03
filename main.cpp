@@ -9,14 +9,14 @@ char rxbuf[MAX_OUTPUT_STREAM_SIZE];
 int main()
 {
 	vector<Rect> found_filtered;
-	bool TRAIN=false;
+	bool TRAIN=true;
 	int bytes_recv = 0;
 	
 
 
 	HOGDescriptor myHOG(Size(20,20),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,30);
 	Mat src,temp,re_src;
-//	deque<int> resultR_static,resultN_static;
+//	deque<int> resultR_static,resultN_static;//用来滤波，使结果更稳定准确
 	VideoCapture capture; 
 
 	//train
@@ -37,7 +37,6 @@ int main()
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
 		cout<<"时间："<<time<<endl;
 	}	
-
 
 	system("pause");
 	return 0;

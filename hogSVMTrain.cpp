@@ -40,11 +40,11 @@ void hogSVMTrain( HOGDescriptor &myHOG,bool TRAIN)
     cout<<"开始训练SVM分类器"<<endl;
     svm.train(sampleFeatureMat1, sampleLabelMat1, Mat(), Mat(), param);//训练分类器
     cout<<"训练完成"<<endl;
-    svm.save("SVM_HOG.xml");//将训练好的SVM模型保存为xml文件
+    svm.save("src//SVM_HOG.xml");//将训练好的SVM模型保存为xml文件
   }
   else //若TRAIN为false，从XML文件读取训练好的分类器
   {
-    svm.load("SVM_HOG.xml");//从XML文件读取训练好的SVM模型
+    svm.load("src//SVM_HOG.xml");//从XML文件读取训练好的SVM模型
   }
 
 
