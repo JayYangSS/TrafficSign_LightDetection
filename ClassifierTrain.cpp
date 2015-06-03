@@ -100,7 +100,7 @@ void ClassifierTrain::train()
 	cout<<"开始训练SVM分类器"<<endl;
 	svm.train(rgbFeature,rgbLabel, Mat(), Mat(), param);
 	cout<<"训练完成"<<endl;
-	svm.save("SVM_HOG.xml");
+	svm.save("SVM_HOG_color.xml");
 }
 
 
