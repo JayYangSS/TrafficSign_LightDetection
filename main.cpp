@@ -36,7 +36,7 @@ Mat shapeMatch(Mat src,Mat templ,Mat test,int match_method)
 int main()
 {
 	ClassifierTrain p;
-	//vector<PixelRGB> rgb;
+	bool TRAIN=false;
 	Mat p1=imread("D:\\JY\\JY_TrainingSamples\\color\\positive\\1.jpg");
 	Mat p2=imread("D:\\JY\\JY_TrainingSamples\\color\\positive\\2.jpg");
 	Mat p3=imread("D:\\JY\\JY_TrainingSamples\\color\\positive\\3.jpg");
@@ -54,7 +54,7 @@ int main()
 
 
 	MySVM svm;
-	p.train();
+	p.train(TRAIN);
 	Mat test=imread("D:\\JY\\JY_TrainingSamples\\TrafficSign\\1.jpg");
 	//Mat test=imread("D:\\JY\\JY_TrainingSamples\\TestIJCNN2013\\TestIJCNN2013Download\\00004.ppm");
 	Mat result=p.colorThreshold(test);

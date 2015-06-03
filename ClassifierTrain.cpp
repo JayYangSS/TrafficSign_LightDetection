@@ -79,28 +79,33 @@ void ClassifierTrain::getRGB(vector<Mat> &imgPosArray,vector<Mat> &imgNegArray)
 
 
 
-void ClassifierTrain::train()
+void ClassifierTrain::train(bool isTrain)
 {
-	int rows=rgb.size();//number of pixels
-	Mat rgbFeature=Mat::zeros(rows,3, CV_32FC1);//save the rgb information 
-	Mat rgbLabel=Mat::zeros(rows,1, CV_32FC1);//save the label information
-	//存入Mat中
-	for (int j=0;j<rows;j++)
+	if(isTrain)//isTrain=true,进行训练
 	{
-		rgbFeature.at<float>(j,0)=rgb[j].b;
-		rgbFeature.at<float>(j,1)=rgb[j].g;
-		rgbFeature.at<float>(j,2)=rgb[j].r;
-		rgbLabel.at<float>(j,0)=rgb[j].p_label;
-	}
+		int rows=rgb.size();//number of pixels
+		Mat rgbFeature=Mat::zeros(rows,3, CV_32FC1);//save the rgb information 
+		Mat rgbLabel=Mat::zeros(rows,1, CV_32FC1);//save the label information
+		//存入Mat中
+		for (int j=0;j<rows;j++)
+		{
+			rgbFeature.at<float>(j,0)=rgb[j].b;
+			rgbFeature.at<float>(j,1)=rgb[j].g;
+			rgbFeature.at<float>(j,2)=rgb[j].r;
+			rgbLabel.at<float>(j,0)=rgb[j].p_label;
+		}
 
-	
-	CvTermCriteria criteria = cvTermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 1000, FLT_EPSILON);//训练SVM分类器,迭代终止条件，当迭代满1000次或误差小于FLT_EPSILON时停止迭代
-	CvSVMParams param(CvSVM::C_SVC, CvSVM::LINEAR, 0, 1, 0, 0.01, 0, 0, 0, criteria);//SVM参数：SVM类型为C_SVC；线性核函数；松弛因子C=0.01
-	
-	cout<<"开始训练SVM分类器"<<endl;
-	svm.train(rgbFeature,rgbLabel, Mat(), Mat(), param);
-	cout<<"训练完成"<<endl;
-	svm.save("SVM_HOG.xml");
+
+		CvTermCriteria criteria = cvTermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 1000, FLT_EPSILON);//训练SVM分类器,迭代终止条件，当迭代满1000次或误差小于FLT_EPSILON时停止迭代
+		CvSVMParams param(CvSVM::C_SVC, CvSVM::LINEAR, 0, 1, 0, 0.01, 0, 0, 0, criteria);//SVM参数：SVM类型为C_SVC；线性核函数；松弛因子C=0.01
+
+		cout<<"开始训练SVM分类器"<<endl;
+		svm.train(rgbFeature,rgbLabel, Mat(), Mat(), param);
+		cout<<"训练完成"<<endl;
+		svm.save("src//SVM_RGB_color.xml");
+	}
+	else
+		svm.load("src//SVM_RGB_color.xml");
 }
 
 
