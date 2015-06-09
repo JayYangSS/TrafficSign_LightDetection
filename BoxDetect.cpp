@@ -3,7 +3,7 @@ void BoxDetect(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered)
 {
 	vector<Rect> found;
 	cout<<"进行多尺度HOG交通灯检测"<<endl;
-	myHOG.detectMultiScale(src_test, found,0,Size(4,4), Size(0,0), 1.05, 2);//对图片进行多尺度行人检测
+	myHOG.detectMultiScale(src_test, found,0.5,Size(4,4), Size(0,0), 1.05, 2);//对图片进行多尺度行人检测
     cout<<"找到的矩形框个数："<<found.size()<<endl;
 
   //找出所有没有嵌套的矩形框r,并放入found_filtered中,如果有嵌套的话,则取外面最大的那个矩形框放入found_filtered中

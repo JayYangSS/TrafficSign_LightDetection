@@ -13,7 +13,7 @@ ClassifierTrain::~ClassifierTrain(void)
 }
 
 
-void ClassifierTrain::getRGB(vector<Mat> &imgPosArray,vector<Mat> &imgNegArray)
+void ClassifierTrain::getRGB(vector<Mat> &imgPosArray,vector<PixelRGB> &rgb,float label)
 {
 	//read positive samples
 	vector<Mat>::iterator iter;
@@ -38,37 +38,7 @@ void ClassifierTrain::getRGB(vector<Mat> &imgPosArray,vector<Mat> &imgNegArray)
 					pixel_rgb.b=data[i];
 					pixel_rgb.g=data[i+1];
 					pixel_rgb.r=data[i+2];
-					pixel_rgb.p_label=POS_LABEL;
-					rgb.push_back(pixel_rgb);
-				}
-			}
-		}
-	}
-	
-
-	//read negative samples
-	for(iter=imgNegArray.begin();iter!=imgNegArray.end();iter++)
-	{
-		Mat img=(*iter);
-		if(img.channels()!=3)
-		{
-			cout<<"The input negative samples are not 3 channels!"<<endl;
-			exit(0);
-		}else{
-			int nr=img.rows;
-			int nc=img.cols;
-			PixelRGB pixel_rgb;
-
-			//scan the pixel
-			for (int j=0;j<nr;j++)
-			{
-				uchar* data=img.ptr<uchar>(j);
-				for (int i=0;i<3*nc;i=i+3)
-				{
-					pixel_rgb.b=data[i];
-					pixel_rgb.g=data[i+1];
-					pixel_rgb.r=data[i+2];
-					pixel_rgb.p_label=NEG_LABEL;
+					pixel_rgb.p_label=label;
 					rgb.push_back(pixel_rgb);
 				}
 			}
@@ -79,10 +49,10 @@ void ClassifierTrain::getRGB(vector<Mat> &imgPosArray,vector<Mat> &imgNegArray)
 
 
 
-void ClassifierTrain::train(bool isTrain)
+
+
+void ClassifierTrain::train(vector<PixelRGB> &rgb)
 {
-	if(isTrain)//isTrain=true,进行训练
-	{
 		int rows=rgb.size();//number of pixels
 		Mat rgbFeature=Mat::zeros(rows,3, CV_32FC1);//save the rgb information 
 		Mat rgbLabel=Mat::zeros(rows,1, CV_32FC1);//save the label information
@@ -102,10 +72,7 @@ void ClassifierTrain::train(bool isTrain)
 		cout<<"开始训练SVM分类器"<<endl;
 		svm.train(rgbFeature,rgbLabel, Mat(), Mat(), param);
 		cout<<"训练完成"<<endl;
-		svm.save("src//SVM_RGB_color.xml");
-	}
-	else
-		svm.load("src//SVM_RGB_color.xml");
+		svm.save("src//SVM_HOG_color_multi.xml");
 }
 
 
@@ -144,7 +111,10 @@ Mat ClassifierTrain::colorThreshold(Mat img)
 			float response=svm.predict(temp_pixel);
 			if (response==1.0)
 			{
-				SegImg.at<float>(j,i/3)=255;
+				SegImg.at<float>(j,i/3)=1;
+			}else if (response==2.0)
+			{
+				SegImg.at<float>(j,i/3)=0.5;
 			}
 			else{
 				SegImg.at<float>(j,i/3)=0;
@@ -152,4 +122,70 @@ Mat ClassifierTrain::colorThreshold(Mat img)
 		}
 	}
 	return SegImg;
+}
+
+
+//训练得到该类的svm
+void ClassifierTrain::TrainSVM(bool isTrain)
+{
+	//isTrain=true,进行训练
+	if(isTrain)
+	{
+		vector<PixelRGB> rgb_r,rgb_b,rgb_n;
+		char redPath[200];
+		char bluePath[200];
+		char yellowPath[200];
+		char negPath[200];
+		int numRed=3,numBlue=3,numNeg=3;
+	
+		//read the red samples
+		vector<Mat> p_red;
+		for (int i=0;i<numRed;i++)
+		{
+			sprintf_s(redPath,"D:\\JY\\JY_TrainingSamples\\color\\red\\%d.jpg",i);
+			Mat p=imread(redPath);
+			p_red.push_back(p);
+		}
+
+
+		//read the blue samples
+		vector<Mat> p_blue;
+		for (int i=0;i<numBlue;i++)
+		{
+			sprintf_s(bluePath,"D:\\JY\\JY_TrainingSamples\\color\\blue\\%d.jpg",i);
+			Mat p=imread(bluePath);
+			p_blue.push_back(p);
+		}
+
+		/*//read the yellow samples
+		vector<Mat> p_yellow;
+		for (int i=0;i<3;i++)
+		{
+			sprintf_s(yellowPath,"D:\\JY\\JY_TrainingSamples\\color\\yellow\\%d.jpg",i);
+			Mat p=imread(yellowPath);
+			p_yellow.push_back(p);
+		}*/
+
+
+		//read the negative samples
+		vector<Mat> p_neg;
+		for (int i=0;i<numNeg;i++)
+		{
+			sprintf_s(negPath,"D:\\JY\\JY_TrainingSamples\\color\\negative\\%d.jpg",i);
+			Mat p=imread(negPath);
+			p_neg.push_back(p);
+		}
+
+
+
+		getRGB(p_red,rgb_r,1.0);
+		getRGB(p_blue,rgb_b,2.0);
+		getRGB(p_neg,rgb_n,-1.0);
+		rgb_r.insert(rgb_r.end(),rgb_b.begin(),rgb_b.end());
+		rgb_r.insert(rgb_r.end(),rgb_n.begin(),rgb_n.end());
+		train(rgb_r);
+	}
+	else
+		svm.load("src//SVM_HOG_color_multi.xml");
+	
 }

@@ -32,7 +32,7 @@
 #define HORZ_PosSamNO    42 //正样本个数
 //#define PosSamNO 10    //正样本个数
 //#define NegSamNO 2  //负样本个数
-#define NegSamNO 2979   //负样本个数
+#define NegSamNO 2000   //负样本个数
 #define HORZ_NegSamNO 3042
 #define HardExampleNO 18
 #define HORZ_HardExampleNO 21
