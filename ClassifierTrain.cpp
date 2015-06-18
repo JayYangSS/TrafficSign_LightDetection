@@ -112,9 +112,14 @@ Mat ClassifierTrain::colorThreshold(Mat img)
 			if (response==1.0)
 			{
 				SegImg.at<float>(j,i/3)=1;
-			}else if (response==2.0)
+			}
+			/*else if (response==2.0)
 			{
-				SegImg.at<float>(j,i/3)=0.5;
+				SegImg.at<float>(j,i/3)=0.3;
+			}*/
+			else if (response==3.0)
+			{
+				SegImg.at<float>(j,i/3)=0.7;
 			}
 			else{
 				SegImg.at<float>(j,i/3)=0;
@@ -131,12 +136,12 @@ void ClassifierTrain::TrainSVM(bool isTrain)
 	//isTrain=true,½øÐÐÑµÁ·
 	if(isTrain)
 	{
-		vector<PixelRGB> rgb_r,rgb_b,rgb_n;
+		vector<PixelRGB> rgb_r,rgb_b,rgb_y,rgb_n;
 		char redPath[200];
 		char bluePath[200];
 		char yellowPath[200];
 		char negPath[200];
-		int numRed=3,numBlue=3,numNeg=3;
+		int numRed=4,numBlue=3,numNeg=3;
 	
 		//read the red samples
 		vector<Mat> p_red;
@@ -149,22 +154,22 @@ void ClassifierTrain::TrainSVM(bool isTrain)
 
 
 		//read the blue samples
-		vector<Mat> p_blue;
+	/*	vector<Mat> p_blue;
 		for (int i=0;i<numBlue;i++)
 		{
 			sprintf_s(bluePath,"D:\\JY\\JY_TrainingSamples\\color\\blue\\%d.jpg",i);
 			Mat p=imread(bluePath);
 			p_blue.push_back(p);
-		}
+		}*/
 
-		/*//read the yellow samples
+		//read the yellow samples
 		vector<Mat> p_yellow;
-		for (int i=0;i<3;i++)
+		for (int i=0;i<7;i++)
 		{
 			sprintf_s(yellowPath,"D:\\JY\\JY_TrainingSamples\\color\\yellow\\%d.jpg",i);
 			Mat p=imread(yellowPath);
 			p_yellow.push_back(p);
-		}*/
+		}
 
 
 		//read the negative samples
@@ -179,9 +184,11 @@ void ClassifierTrain::TrainSVM(bool isTrain)
 
 
 		getRGB(p_red,rgb_r,1.0);
-		getRGB(p_blue,rgb_b,2.0);
+	//	getRGB(p_blue,rgb_b,2.0);
+		getRGB(p_yellow,rgb_y,3.0);
 		getRGB(p_neg,rgb_n,-1.0);
 		rgb_r.insert(rgb_r.end(),rgb_b.begin(),rgb_b.end());
+		rgb_r.insert(rgb_r.end(),rgb_y.begin(),rgb_y.end());
 		rgb_r.insert(rgb_r.end(),rgb_n.begin(),rgb_n.end());
 		train(rgb_r);
 	}

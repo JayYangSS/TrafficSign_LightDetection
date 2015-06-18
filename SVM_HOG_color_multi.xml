@@ -14,33 +14,33 @@
     <cols>3</cols>
     <dt>i</dt>
     <data>
-      -1 1 2</data></class_labels>
+      -1 1 3</data></class_labels>
   <sv_total>3</sv_total>
   <support_vectors>
     <_>
-      1.74997896e-002 6.02770410e-002 -5.16903698e-002</_>
+      -4.72074151e-002 2.09399536e-001 -1.35646373e-001</_>
     <_>
-      -5.81290461e-002 8.28392655e-002 -1.18998187e-002</_>
+      6.03398914e-003 -9.33036860e-003 -6.24903990e-003</_>
     <_>
-      -1.67052317e-002 -3.71940434e-003 1.60411168e-002</_></support_vectors>
+      7.82162324e-002 -2.20999300e-001 1.53977841e-001</_></support_vectors>
   <decision_functions>
     <_>
       <sv_count>1</sv_count>
-      <rho>-1.1056231147171525e+000</rho>
+      <rho>-2.4318286084074781e+000</rho>
       <alpha>
         1.</alpha>
       <index>
         0</index></_>
     <_>
       <sv_count>1</sv_count>
-      <rho>9.9927436654562773e-002</rho>
+      <rho>-2.1751648591155179e+000</rho>
       <alpha>
         1.</alpha>
       <index>
         1</index></_>
     <_>
       <sv_count>1</sv_count>
-      <rho>8.8597224798813559e-002</rho>
+      <rho>7.3391514858914935e+000</rho>
       <alpha>
         1.</alpha>
       <index>

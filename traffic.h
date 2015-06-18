@@ -6,19 +6,13 @@
 #include "opencv2/opencv.hpp"
 #include <vector>
 #include <stdlib.h>
-/*
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/objdetect/objdetect.hpp>
-#include <opencv2/ml/ml.hpp>*/
-//#include <socket_manager.h>
+
 
 #define GREEN_PIXEL_LABEL 255
 #define RED_PIXEL_LABEL 128
 #define NON_BLOB_PIXEL_LABEL 0
 //#define ROIHeight 300
-#define ROIHeight 250
+#define ROIHeight 480
 #define	ROIWidth 0
 #define PI 3.1415
 #define RESULT_G 0
@@ -36,6 +30,12 @@
 #define HORZ_NegSamNO 3042
 #define HardExampleNO 18
 #define HORZ_HardExampleNO 21
+
+//形状信息定义
+#define TRIANGLE 0
+#define CIRCLE 1
+#define HEXA 2
+
 
 //HardExample：负样本个数。如果HardExampleNO大于0，表示处理完初始负样本集后，继续处理HardExample负样本集。
 //不使用HardExample时必须设置为0，因为特征向量矩阵和特征类别矩阵的维数初始化时用到这个值
@@ -67,7 +67,7 @@ public:
 
 };
 
-int colorSegmentation(IplImage* inputImage);
+IplImage* colorSegmentation(IplImage* inputImage);
 void rgb2hsi(int red, int green, int blue, int& hue, int& saturation, int& intensity );
 //void hog_svmDetect(Mat src_test,bool TRAIN,vector<Rect> &found_filtered);
 int detect_result(Mat src_test,vector<Rect> &found_filtered,DetecResult *detct,char Direct);
@@ -75,7 +75,7 @@ void hogSVMTrain( HOGDescriptor &myHOG,bool TRAIN);
 //void BoxDetect(Mat src,Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered);
 void BoxDetect(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered);
 int SortRect(Mat src_test,int num,DetecResult *Rst,char Direct);
-
+Mat ShapeRecognize(Mat src);
 
 
 class MySVM : public CvSVM
