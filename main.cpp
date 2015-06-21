@@ -4,61 +4,65 @@
 char rxbuf[MAX_OUTPUT_STREAM_SIZE];
 #include"traffic.h"
 #include "ClassifierTrain.h"
+#include "math_utils.h"
+
+void testY();
+void test_nhs_Video();
 
 int main()
 {
-	ClassifierTrain p;
-	bool TRAIN=false;
-	
-	//red
-	p.TrainSVM(TRAIN);
-	
-	
 
-/*	VideoCapture capture; 
-	Mat src,re_src;
-	IplImage *thresh,*thres_res;
-	capture.open("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
-	while(capture.read(src))
+	test_nhs_Video();
+	//testY();
+
+	system("pause");
+
+}
+
+
+
+//检测黄色标志牌的黄色范围
+void testY()
+{
+	char path[100];
+	for (int i=0;i<7;i++)
 	{
-		int start=cvGetTickCount();
-		resize(src,re_src,Size(640,480));
-		thresh=&IplImage(re_src);
-		thres_res=colorSegmentation(thresh);
-		cvShowImage("seg",thres_res);
-		cvWaitKey(5);
+		sprintf_s(path,"D:\\JY\\JY_TrainingSamples\\color\\yellow\\%d.jpg",i);
+		Mat src=imread(path);
+		Mat ihls=convert_rgb_to_ihls(src);
+		Mat nhls=convert_ihls_to_nhs(ihls,0);
+	}
+}
 
-		imshow("src",re_src);
-		waitKey(5);
-		int end=cvGetTickCount();
-		cvReleaseImage(&thres_res);
 
-		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
-		cout<<"时间："<<time<<endl;
-	}	
-	cvReleaseImage(&thresh);*/
-
-	//Mat src=imread("shape.png",0);
-
+//使用ihls->nhs的颜色检测+形状检测的测试视频程序
+void test_nhs_Video()
+{
 	VideoCapture capture; 
 	Mat src,re_src,thresh;
-	capture.open("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
+	capture.open("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign3.avi");
 	while(capture.read(src))
 	{
 		int start=cvGetTickCount();
 		resize(src,re_src,Size(640,480));
-		thresh=p.colorThreshold(re_src);
-		
-		Mat tmp_thresh;
-		thresh.convertTo(tmp_thresh,CV_8UC1,255);//必须转为CV_8UC1，不然后面的canny函数报错
-		int g_nStructElementSize = 3; //结构元素(内核矩阵)的尺寸
-		Mat noiseremove;
-		Mat element = getStructuringElement(MORPH_RECT,Size(g_nStructElementSize+1,g_nStructElementSize+1),Point( g_nStructElementSize, g_nStructElementSize ));
-		erode(tmp_thresh,noiseremove,element);//remove noise
+		imshow("re_src",re_src);
+		waitKey(5);
 
+		//显示直方图
+		showHist(re_src);
+
+		//TODO ADD
+
+		Mat ihls_image = convert_rgb_to_ihls(re_src);
+		Mat nhs_image = convert_ihls_to_nhs(ihls_image,0);//0:yellow,1:blue,2:red
+		Mat noiseremove;
+		imshow("ihls_image",ihls_image);
+		waitKey(2);
+
+		medianBlur(nhs_image,noiseremove,3);
 
 		//形状识别
-		Mat p1=ShapeRecognize(tmp_thresh);
+		Mat p1=ShapeRecognize(nhs_image);
 		Mat p2=ShapeRecognize(noiseremove);
 		imshow("noise remove",p2);
 		waitKey(5);
@@ -70,8 +74,4 @@ int main()
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
 		cout<<"时间："<<time<<endl;
 	}	
-
-	system("pause");
-
 }
-
