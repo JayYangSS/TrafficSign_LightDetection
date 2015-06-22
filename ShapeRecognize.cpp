@@ -15,7 +15,7 @@ static double angle(cv::Point pt1, cv::Point pt2, cv::Point pt0)
 
 
 // Helper function to display text in the center of a contour
-void setLabel(cv::Mat& im, const std::string label, std::vector<cv::Point>& contour)
+void setLabel(cv::Mat& im, const std::string label, Rect r)
 {
 	int fontface = cv::FONT_HERSHEY_SIMPLEX;
 	double scale = 0.4;
@@ -23,7 +23,6 @@ void setLabel(cv::Mat& im, const std::string label, std::vector<cv::Point>& cont
 	int baseline = 0;
 
 	cv::Size text = cv::getTextSize(label, fontface, scale, thickness, &baseline);
-	cv::Rect r = cv::boundingRect(contour);
 
 	cv::Point pt(r.x + ((r.width - text.width) / 2), r.y + ((r.height + text.height) / 2));
 	cv::rectangle(im, pt + cv::Point(0, baseline), pt + cv::Point(text.width, -text.height), CV_RGB(255,255,255), CV_FILLED);
@@ -31,7 +30,7 @@ void setLabel(cv::Mat& im, const std::string label, std::vector<cv::Point>& cont
 }
 
 
-Mat ShapeRecognize(Mat src)
+Mat ShapeRecognize(Mat src,vector<Rect>&boudingBox)
 {
 	if (src.channels()!=1)
 	{
@@ -55,15 +54,25 @@ Mat ShapeRecognize(Mat src)
 
 		for (int i = 0; i < contours.size(); i++)
 		{
+			
+			Rect rect=boundingRect(contours[i]);
+			//constraints of width-height ratio
+			bool RatioConstraint=(abs(1-(float)(rect.width)/((float)(rect.height)))<0.2);
+			if(!RatioConstraint)continue;
 			// Approximate contour with accuracy proportional to the contour perimeter
 			cv::approxPolyDP(cv::Mat(contours[i]), approx, cv::arcLength(cv::Mat(contours[i]), true) * 0.02, true);
+
 
 			// Skip small or non-convex objects 
 			if (std::fabs(cv::contourArea(contours[i])) < 100 || !cv::isContourConvex(approx))
 				continue;
 
 			if (approx.size() == 3)
-				setLabel(dst, "TRI", contours[i]);    // Triangles
+			{
+				setLabel(dst, "TRI", rect);    // Triangles
+				boudingBox.push_back(rect);
+			}
+				
 
 			else if (approx.size() >= 4 && approx.size() <= 6)
 			{
@@ -84,12 +93,12 @@ Mat ShapeRecognize(Mat src)
 
 				// Use the degrees obtained above and the number of vertices
 				// to determine the shape of the contour
-				if (vtc == 4 && mincos >= -0.1 && maxcos <= 0.3)
-					setLabel(dst, "RECT", contours[i]);
-				else if (vtc == 5 && mincos >= -0.34 && maxcos <= -0.27)
-					setLabel(dst, "PENTA", contours[i]);
-				else if (vtc == 6 && mincos >= -0.55 && maxcos <= -0.45)
-					setLabel(dst, "HEXA", contours[i]);
+				if (vtc <= 6 && mincos >= -0.8 && maxcos <= -0.45)
+				{
+					setLabel(dst, "Octagon",rect);
+					boudingBox.push_back(rect);
+				}
+					
 			}
 			else
 			{
@@ -100,7 +109,11 @@ Mat ShapeRecognize(Mat src)
 
 				if (std::abs(1 - ((double)r.width / r.height)) <= 0.2 &&
 					std::abs(1 - (area / (CV_PI * std::pow(radius, 2)))) <= 0.2)
-					setLabel(dst, "CIR", contours[i]);
+				{
+					setLabel(dst, "CIR", rect);
+					boudingBox.push_back(rect);
+				}
+					
 			}
 
 	    }

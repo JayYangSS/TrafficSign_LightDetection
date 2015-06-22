@@ -84,8 +84,9 @@ Mat convert_rgb_to_ihls(Mat rgb_image)
 
 Mat	convert_ihls_to_nhs(Mat ihls_image, int colour, int hue_max, int hue_min,int sat_min)
 {
-	int maxH=0;
-	int minH=255,minS=255;
+	
+	//static int maxH=0;
+	//static int minH=255,minS=255;
 
 
 	if (colour == 2)//RED
@@ -158,9 +159,9 @@ Mat	convert_ihls_to_nhs(Mat ihls_image, int colour, int hue_max, int hue_min,int
 				uchar h = *ihls_data++;
 				*nhs_data++ = (Y_CONDITION) ? 255 : 0;
 
-				if(maxH<h)maxH=h;
+			/*	if(maxH<h)maxH=h;
 				if(minH>h)minH=h;
-				if(minS>s)minS=s;
+				if(minS>s)minS=s;*/
 
 			}
 		}
@@ -184,9 +185,9 @@ Mat	convert_ihls_to_nhs(Mat ihls_image, int colour, int hue_max, int hue_min,int
 		}
 	}
 
-	cout<<"maxH:"<<maxH<<endl;
+/*	cout<<"maxH:"<<maxH<<endl;
 	cout<<"minH:"<<minH<<endl;
-	cout<<"minS:"<<minS<<endl;
+	cout<<"minS:"<<minS<<endl;*/
 
 	return nhs_image;
 }

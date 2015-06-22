@@ -29,9 +29,9 @@
 #define B_SAT_MIN 39
 
 // The values for the yellow colour.
-#define Y_HUE_MAX 35
-#define Y_HUE_MIN 20
-#define Y_SAT_MIN 90
+#define Y_HUE_MAX 52
+#define Y_HUE_MIN 18
+#define Y_SAT_MIN 30
 
 /**
  * Return the greatest value of three passed arguments.

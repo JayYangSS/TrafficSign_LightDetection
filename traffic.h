@@ -75,7 +75,7 @@ void hogSVMTrain( HOGDescriptor &myHOG,bool TRAIN);
 //void BoxDetect(Mat src,Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered);
 void BoxDetect(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered);
 int SortRect(Mat src_test,int num,DetecResult *Rst,char Direct);
-Mat ShapeRecognize(Mat src);
+Mat ShapeRecognize(Mat src,vector<Rect>&boundingBox);
 void showHist(Mat src);
 
 class MySVM : public CvSVM
