@@ -32,7 +32,7 @@
 #define HORZ_PosSamNO    42 //正样本个数
 //#define PosSamNO 10    //正样本个数
 //#define NegSamNO 2  //负样本个数
-#define NegSamNO 2000   //负样本个数
+#define NegSamNO 1000   //负样本个数
 #define HORZ_NegSamNO 3042
 #define HardExampleNO 18
 #define HORZ_HardExampleNO 21
@@ -67,32 +67,35 @@ public:
 
 };
 
+
+class MySVM : public CvSVM
+{
+public:
+	//获得SVM的决策函数中的alpha数组
+	double * get_alpha_vector()
+	{
+		return this->decision_func->alpha;
+	}
+
+	//获得SVM的决策函数中的rho参数,即偏移量
+	float get_rho()
+	{
+		return this->decision_func->rho;
+	}
+};
+
 int colorSegmentation(IplImage* inputImage);
 void rgb2hsi(int red, int green, int blue, int& hue, int& saturation, int& intensity );
 //void hog_svmDetect(Mat src_test,bool TRAIN,vector<Rect> &found_filtered);
 int detect_result(Mat src_test,vector<Rect> &found_filtered,DetecResult *detct,char Direct);
-void hogSVMTrain( HOGDescriptor &myHOG,bool TRAIN);
+void hogSVMTrain(MySVM &svm,bool TRAIN);
 //void BoxDetect(Mat src,Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered);
 void BoxDetect(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered);
 int SortRect(Mat src_test,int num,DetecResult *Rst,char Direct);
 
 
 
-class MySVM : public CvSVM
-{
-  public:
-  //获得SVM的决策函数中的alpha数组
-  double * get_alpha_vector()
-  {
-    return this->decision_func->alpha;
-  }
 
-  //获得SVM的决策函数中的rho参数,即偏移量
-  float get_rho()
-  {
-    return this->decision_func->rho;
-  }
-};
 
 
 #endif
