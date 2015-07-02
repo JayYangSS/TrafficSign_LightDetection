@@ -77,6 +77,8 @@ void BoxDetect(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered);
 int SortRect(Mat src_test,int num,DetecResult *Rst,char Direct);
 Mat ShapeRecognize(Mat src,vector<Rect>&boundingBox);
 void showHist(Mat src);
+//显示标注信息
+void setLabel(cv::Mat& im, const std::string label, Rect r);
 
 class MySVM : public CvSVM
 {
