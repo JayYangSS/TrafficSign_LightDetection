@@ -3,7 +3,7 @@
 #define TEST_SAMPLES 10
 #define  DATA_SET_SIZE 22
 cv::Mat HOGFeature;
-#define PCA_FILE "pcaTriangle.yml"
+//#define PCA_FILE "pcaTriangle.yml"
 
 
 void read_dataset(string filename, cv::Mat &data, cv::Mat &labels)
@@ -58,28 +58,28 @@ void loadPCA(const string &file_name,cv::PCA& pca_)
 
 
 
-void NeuralNetTrain(string path,char* Neural_output)
+void NeuralNetTrain(string shufflePath,string Neural_output,PCA &pca,int trainingSampleNum,int numClasses)
 {
 
-	cv::Mat labels = Mat::zeros(TRIANGLE_TRAINING, TRIANGLE_CLASSES, CV_64F);
+	cv::Mat labels = Mat::zeros(trainingSampleNum, numClasses, CV_64F);
 	int n = 0; 
 
 
 	//matrix to hold the training samples
 	cv::Mat training_set;
 	//matrix to hold the training labels.
-	cv::Mat training_set_classifications(TRIANGLE_TRAINING,TRIANGLE_CLASSES,CV_64F);
+	cv::Mat training_set_classifications(trainingSampleNum,numClasses,CV_64F);
 
 
 
 
 	//load the training and test data sets.
-	read_dataset(path, HOGFeature, labels);
+	read_dataset(shufflePath, HOGFeature, labels);
 
 
 	// load the pca cov_matrix	
-	PCA pca;
-	loadPCA( PCA_FILE, pca);
+	//PCA pca;
+	//loadPCA( pcaPath, pca);
 
 
 	// reduce the dimension of the data set to 388 (99% of the variance retained)
@@ -89,12 +89,12 @@ void NeuralNetTrain(string path,char* Neural_output)
 
 	// split the dataSet into training and test sets
 	//training_set = dataset388(Range(0,TRIANGLE_TRAINING) , Range::all() ).clone();
-	training_set = datasetReduce(Range(0,TRIANGLE_TRAINING) , Range::all() ).clone();
+	training_set = datasetReduce(Range(0,trainingSampleNum) , Range::all() ).clone();
 	//test_set = dataset388(Range(TRAINING_SAMPLES , DATA_SET_SIZE ) ,  Range::all() ).clone();
 	datasetReduce.release();
 
 	// do the same with the assiocated labels
-	training_set_classifications = labels(Range(0,TRIANGLE_TRAINING) , Range::all() ).clone();
+	training_set_classifications = labels(Range(0,trainingSampleNum) , Range::all() ).clone();
 	//test_set_classifications = labels(Range(TRAINING_SAMPLES , DATA_SET_SIZE ) ,  Range::all() ).clone();
 	labels.release();
 
@@ -107,7 +107,7 @@ void NeuralNetTrain(string path,char* Neural_output)
 	cv::Mat layers(3,1,CV_32S);
 	layers.at<int>(0,0) = inputlayer;//input layer
 	layers.at<int>(1,0)= HIDDEN_1;//hidden1 layer
-	layers.at<int>(2,0) =TRIANGLE_CLASSES;//output layer
+	layers.at<int>(2,0) =numClasses;//output layer
 
 	//create the neural network.
 	//for more details check http://docs.opencv.org/modules/ml/doc/neural_networks.html
@@ -134,10 +134,15 @@ void NeuralNetTrain(string path,char* Neural_output)
 	printf( "Training iterations: %i\n\n", iterations);
 
 	// Save the model generated into an xml file.
-	CvFileStorage* storage = cvOpenFileStorage( Neural_output, 0, CV_STORAGE_WRITE );
+	CvFileStorage* storage = cvOpenFileStorage(Neural_output.c_str(), 0, CV_STORAGE_WRITE );
+
+	replace(Neural_output.begin(),Neural_output.end(),'.',' ');
+	stringstream iss(Neural_output);
+	string Neural_outputName;
+	iss>>Neural_outputName;
 
 
-	nnetwork.write(storage,"xmlTriangle");
+	nnetwork.write(storage,Neural_outputName.c_str());
 	cvReleaseFileStorage(&storage); 
 
 

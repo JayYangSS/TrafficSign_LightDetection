@@ -3,7 +3,8 @@
 #include "math_utils.h"
 
 //void testAccuracy(String path,int num_folder);
-void test_RBYcolor_Video(PCA &pca,CvANN_MLP &nnetwork);
+void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
+	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
 
 
 void covertImg2HOG(Mat img,vector<float> &descriptors)
@@ -159,33 +160,66 @@ void savePCA(string filepath,string outputPath)
 int main()
 {
 	//神经网络的训练工作
+	//triangle
 	String path="D:\\JY\\JY_TrainingSamples\\TrafficSign\\triangle";
-	int sampleNum=readdata(path,3,"triangle.txt");
+	int triangleNum=readdata(path,TRIANGLE_CLASSES,"triangle.txt");
 	shuffleDataSet("triangle.txt","shuffleTriangle.yml");
 	savePCA("shuffleTriangle.yml","pcaTriangle.yml");
-    NeuralNetTrain("shuffleTriangle.yml","xmlTriangle.xml");
-	//Recognize("xmlTriangle.xml","pcaTriangle.yml");
+    
 	PCA pca;
 	loadPCA("pcaTriangle.yml", pca);
+	NeuralNetTrain("shuffleTriangle.yml","xmlTriangle.xml",pca,triangleNum,TRIANGLE_CLASSES);
 	CvANN_MLP nnetwork;
 	nnetwork.load("xmlTriangle.xml", "xmlTriangle");
 
+
+
+	//RoundRim
+	String path_RoundRim="D:\\JY\\JY_TrainingSamples\\TrafficSign\\RoundRim";
+    int roundrimNum=readdata(path_RoundRim,ROUNDRIM_CLASSES,"RoundRim.txt");
+	shuffleDataSet("RoundRim.txt","shuffleRoundRim.yml");
+	savePCA("shuffleRoundRim.yml","pcaRoundRim.yml");
+	
+	PCA pca_RoundRim;
+	loadPCA("pcaRoundRim.yml", pca_RoundRim);
+	NeuralNetTrain("shuffleRoundRim.yml","xmlRoundRim.xml",pca_RoundRim,roundrimNum,ROUNDRIM_CLASSES);
+	CvANN_MLP nnetwork_RoundRim;
+	//待解决
+	nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
+
+
+	//RoundBlue
+	String path_RoundBlue="D:\\JY\\JY_TrainingSamples\\TrafficSign\\RoundBlue";
+	int roundblueNum=readdata(path_RoundBlue,ROUNDBLUE_CLASSES,"RoundBlue.txt");
+	shuffleDataSet("RoundBlue.txt","shuffleRoundBlue.yml");
+	savePCA("shuffleRoundBlue.yml","pcaRoundBlue.yml");
+	
+	PCA pca_RoundBlue;
+	loadPCA("pcaRoundBlue.yml", pca_RoundBlue);
+	NeuralNetTrain("shuffleRoundBlue.yml","xmlRoundBlue.xml",pca_RoundBlue,roundblueNum,ROUNDBLUE_CLASSES);
+	CvANN_MLP nnetwork_RoundBlue;
+	nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
+
+
+
+
 	//test
-	test_RBYcolor_Video(pca,nnetwork);
+	test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
 
 	system("pause");
 }
 
 
 
-void test_RBYcolor_Video(PCA &pca,CvANN_MLP &nnetwork)
+void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
+										  CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue)
 {
 	VideoCapture capture; 
 	vector<Rect> boundingBox;
 	Mat src,re_src,thresh;
 	Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};
 
-	capture.open("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign4.avi");
+	capture.open("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
 	while(capture.read(src))
 	{
 		int start=cvGetTickCount();
@@ -212,13 +246,19 @@ void test_RBYcolor_Video(PCA &pca,CvANN_MLP &nnetwork)
 				Point leftup(boundingBox[i].x,boundingBox[i].y);
 				Point rightdown(boundingBox[i].x+boundingBox[i].width,boundingBox[i].y+boundingBox[i].height);
 				rectangle(re_src,leftup,rightdown,colorMode[mode],2);
-				
-				Mat recognizeMat=re_src(boundingBox[i]);
-				int result=Recognize(nnetwork,pca,recognizeMat);
+				Mat recognizeMat=re_src(boundingBox[i]);//cut the traffic signs
 
-				//set the recognition result to the image
-				switch(result)
+
+
+
+
+				//for different color, set different neural network
+				if(mode==0)//yellow
 				{
+					int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
+					//set the recognition result to the image
+					switch(result)
+					{
 					case 1:
 						setLabel(re_src,"plus",boundingBox[i]);break;
 					case 2:
@@ -227,6 +267,35 @@ void test_RBYcolor_Video(PCA &pca,CvANN_MLP &nnetwork)
 						setLabel(re_src,"slow",boundingBox[i]);break;
 					default:
 						break;
+					}
+				}
+				else if(mode==1)//blue
+				{
+					int result=Recognize(nnetwork_RoundBlue,pca_RoundBlue,recognizeMat,ROUNDBLUE_CLASSES);
+					//set the recognition result to the image
+					switch(result)
+					{
+					case 1:
+						setLabel(re_src,"car",boundingBox[i]);break;
+					case 2:
+						setLabel(re_src,"bike",boundingBox[i]);break;
+					default:
+						break;
+					}
+				}
+
+				else{
+					int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
+					//set the recognition result to the image
+					switch(result)
+					{
+					case 1:
+						setLabel(re_src,"NoSound",boundingBox[i]);break;
+					case 2:
+						setLabel(re_src,"30",boundingBox[i]);break;
+					default:
+						break;
+					}
 				}
 
 			}

@@ -10,12 +10,14 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include <time.h>
+//#include <time.h>
 #define IMG_NEW_DIM     40
 #define RESIZED_IMG_DIM     1764
 //number of classes
 #define TRIANGLE_CLASSES 3
-#define TRIANGLE_TRAINING 26
+#define ROUNDRIM_CLASSES 2
+#define ROUNDBLUE_CLASSES 2
+
 
 
 //parameters of neural network
@@ -25,8 +27,8 @@
 using namespace std;
 using namespace cv; 
 
-void NeuralNetTrain(string path,char* Neural_output);
+void NeuralNetTrain(string shufflePath,string Neural_output,PCA &pca,int trainingSampleNum,int numClasses);
 void loadPCA(const string &file_name,cv::PCA& pca_);
-int Recognize(CvANN_MLP &nnetwork,PCA &pca,Mat test_img);
+int Recognize(CvANN_MLP &nnetwork,PCA &pca,Mat test_img,int numClasses);
 
 #endif
