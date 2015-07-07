@@ -1,6 +1,7 @@
 #include "HOG_ANN.h"
 #include "traffic.h"
 #include "math_utils.h"
+#include "socket_server_task.h"
 
 //void testAccuracy(String path,int num_folder);
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
@@ -139,11 +140,8 @@ void savePCA(string filepath,string outputPath)
 	iss>>readfileName;
 
 	fs[readfileName] >> dataset ;
-
 	// exclude the ClassId before performing PCA
 	Mat data = dataset(Range::all(), Range(0,RESIZED_IMG_DIM));
-
-
 	//  perform to retain 99%  of the variance
 	PCA pca(data, Mat(), CV_PCA_DATA_AS_ROW , 1.0f);
 
@@ -159,53 +157,58 @@ void savePCA(string filepath,string outputPath)
 
 int main()
 {
-	//神经网络的训练工作
-	//triangle
-	String path="D:\\JY\\JY_TrainingSamples\\TrafficSign\\triangle";
-	int triangleNum=readdata(path,TRIANGLE_CLASSES,"triangle.txt");
-	shuffleDataSet("triangle.txt","shuffleTriangle.yml");
-	savePCA("shuffleTriangle.yml","pcaTriangle.yml");
-    
-	PCA pca;
+	//socket通信
+	SocketInit();
+	g_mat = cvCreateMat(2, 1, CV_32FC1);//用于传输数据
+	
+	bool isTrain=false;
+	CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue;
+	PCA pca,pca_RoundRim,pca_RoundBlue;
 	loadPCA("pcaTriangle.yml", pca);
-	NeuralNetTrain("shuffleTriangle.yml","xmlTriangle.xml",pca,triangleNum,TRIANGLE_CLASSES);
-	CvANN_MLP nnetwork;
-	nnetwork.load("xmlTriangle.xml", "xmlTriangle");
-
-
-
-	//RoundRim
-	String path_RoundRim="D:\\JY\\JY_TrainingSamples\\TrafficSign\\RoundRim";
-    int roundrimNum=readdata(path_RoundRim,ROUNDRIM_CLASSES,"RoundRim.txt");
-	shuffleDataSet("RoundRim.txt","shuffleRoundRim.yml");
-	savePCA("shuffleRoundRim.yml","pcaRoundRim.yml");
-	
-	PCA pca_RoundRim;
 	loadPCA("pcaRoundRim.yml", pca_RoundRim);
-	NeuralNetTrain("shuffleRoundRim.yml","xmlRoundRim.xml",pca_RoundRim,roundrimNum,ROUNDRIM_CLASSES);
-	CvANN_MLP nnetwork_RoundRim;
-	//待解决
-	nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
-
-
-	//RoundBlue
-	String path_RoundBlue="D:\\JY\\JY_TrainingSamples\\TrafficSign\\RoundBlue";
-	int roundblueNum=readdata(path_RoundBlue,ROUNDBLUE_CLASSES,"RoundBlue.txt");
-	shuffleDataSet("RoundBlue.txt","shuffleRoundBlue.yml");
-	savePCA("shuffleRoundBlue.yml","pcaRoundBlue.yml");
-	
-	PCA pca_RoundBlue;
 	loadPCA("pcaRoundBlue.yml", pca_RoundBlue);
-	NeuralNetTrain("shuffleRoundBlue.yml","xmlRoundBlue.xml",pca_RoundBlue,roundblueNum,ROUNDBLUE_CLASSES);
-	CvANN_MLP nnetwork_RoundBlue;
-	nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
+
+	if(isTrain)
+	{
+		
+		//神经网络的训练工作
+		//triangle
+		String path="D:\\JY\\JY_TrainingSamples\\TrafficSign\\triangle";
+		int triangleNum=readdata(path,TRIANGLE_CLASSES,"triangle.txt");
+		shuffleDataSet("triangle.txt","shuffleTriangle.yml");
+		savePCA("shuffleTriangle.yml","pcaTriangle.yml");
+		NeuralNetTrain("shuffleTriangle.yml","xmlTriangle.xml",pca,triangleNum,TRIANGLE_CLASSES);
+		nnetwork.load("xmlTriangle.xml", "xmlTriangle");
 
 
+
+		//RoundRim
+		String path_RoundRim="D:\\JY\\JY_TrainingSamples\\TrafficSign\\RoundRim";
+		int roundrimNum=readdata(path_RoundRim,ROUNDRIM_CLASSES,"RoundRim.txt");
+		shuffleDataSet("RoundRim.txt","shuffleRoundRim.yml");
+		savePCA("shuffleRoundRim.yml","pcaRoundRim.yml");
+		NeuralNetTrain("shuffleRoundRim.yml","xmlRoundRim.xml",pca_RoundRim,roundrimNum,ROUNDRIM_CLASSES);
+		nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
+
+
+		//RoundBlue
+		String path_RoundBlue="D:\\JY\\JY_TrainingSamples\\TrafficSign\\RoundBlue";
+		int roundblueNum=readdata(path_RoundBlue,ROUNDBLUE_CLASSES,"RoundBlue.txt");
+		shuffleDataSet("RoundBlue.txt","shuffleRoundBlue.yml");
+		savePCA("shuffleRoundBlue.yml","pcaRoundBlue.yml");
+		NeuralNetTrain("shuffleRoundBlue.yml","xmlRoundBlue.xml",pca_RoundBlue,roundblueNum,ROUNDBLUE_CLASSES);
+		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
+	}else{
+		nnetwork.load("xmlTriangle.xml", "xmlTriangle");
+		nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
+		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
+	}
+	
 
 
 	//test
 	test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
-
+	cvReleaseMat(&g_mat);
 	system("pause");
 }
 
@@ -214,6 +217,8 @@ int main()
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 										  CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue)
 {
+	
+	float send=0;
 	VideoCapture capture; 
 	vector<Rect> boundingBox;
 	Mat src,re_src,thresh;
@@ -250,7 +255,7 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 
 
 
-
+				
 
 				//for different color, set different neural network
 				if(mode==0)//yellow
@@ -260,11 +265,15 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 					switch(result)
 					{
 					case 1:
-						setLabel(re_src,"plus",boundingBox[i]);break;
+						setLabel(re_src,"plus",boundingBox[i]);
+						send=1.0;
+						break;
 					case 2:
-						setLabel(re_src,"man",boundingBox[i]);break;
+						setLabel(re_src,"man",boundingBox[i]);
+						send=2.0;break;
 					case 3:
-						setLabel(re_src,"slow",boundingBox[i]);break;
+						setLabel(re_src,"slow",boundingBox[i]);
+						send=3.0;break;
 					default:
 						break;
 					}
@@ -276,9 +285,11 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 					switch(result)
 					{
 					case 1:
-						setLabel(re_src,"car",boundingBox[i]);break;
+						setLabel(re_src,"car",boundingBox[i]);
+						send=4.0;break;
 					case 2:
-						setLabel(re_src,"bike",boundingBox[i]);break;
+						setLabel(re_src,"bike",boundingBox[i]);
+						send=5.0;break;
 					default:
 						break;
 					}
@@ -290,20 +301,32 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 					switch(result)
 					{
 					case 1:
-						setLabel(re_src,"NoSound",boundingBox[i]);break;
+						setLabel(re_src,"NoSound",boundingBox[i]);
+						send=6.0;break;
 					case 2:
-						setLabel(re_src,"30",boundingBox[i]);break;
+						setLabel(re_src,"30",boundingBox[i]);
+						send=7.0;break;
 					default:
 						break;
 					}
 				}
 
 			}
-			boundingBox.clear();//必须清楚当前颜色的框，不然下一种颜色的框的起始位置就不是0了
 			imshow("re_src",re_src);
 			waitKey(5);
+			boundingBox.clear();//必须清楚当前颜色的框，不然下一种颜色的框的起始位置就不是0了
+			
 		}
 		
+
+		//socket通信
+		if (!gb_filled)
+		{
+			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();
+			*(float *)CV_MAT_ELEM_PTR(*g_mat, 1, 0) = send;
+
+			gb_filled = true;
+		}
 
 		int end=cvGetTickCount();
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
