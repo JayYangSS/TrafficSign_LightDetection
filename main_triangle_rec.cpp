@@ -237,11 +237,16 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 
 			Mat nhs_image = convert_ihls_to_nhs(ihls_image,mode);//0:yellow,1:blue,2:red
 			Mat noiseremove;
-			//imshow("ihls_image",ihls_image);
-			//waitKey(2);
-
+			//分别显示黄蓝红色的nhs二值图像 
+			stringstream ss;
+			string index;
+			ss<<mode;
+			ss>>index;
+			string tmp="nhs_image"+index;
+			//滤波
 			medianBlur(nhs_image,noiseremove,3);
-			
+			imshow(tmp,noiseremove);
+			waitKey(2);
 			//形状识别
 			Mat p2=ShapeRecognize(noiseremove,boundingBox);
 	
