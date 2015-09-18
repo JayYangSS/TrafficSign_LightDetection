@@ -2,11 +2,26 @@
 #include "traffic.h"
 #include "math_utils.h"
 #include "socket_server_task.h"
-
+#include "Tracker/CTracker.h"
 //void testAccuracy(String path,int num_folder);
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
 
+Point2d getBoxCenter(Rect &boundingBox){
+	Point2d centerPoint;
+	centerPoint.x=boundingBox.x+boundingBox.width/2;
+	centerPoint.y=boundingBox.y+boundingBox.height/2;
+	return centerPoint;
+}
+
+void getCentersFromBoxes(vector<Rect> &boundingBoxs,vector<Point2d> &centers)
+{
+	for(int i=0;i<boundingBoxs.size();i++)
+	{
+		Point2d center=getBoxCenter(boundingBoxs[i]);
+		centers.push_back(center);
+	}
+}
 
 void covertImg2HOG(Mat img,vector<float> &descriptors)
 {
@@ -217,13 +232,15 @@ int main()
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 										  CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue)
 {
-	
 	float send=0;
 	VideoCapture capture; 
 	vector<Rect> boundingBox;
 	Mat src,re_src,thresh;
 	Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};
-
+	//kalman tracker
+	vector<Point2d> centers;
+	CTracker tracker(0.2,0.5,60.0,10,10);
+	//process every frame
 	capture.open("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
 	while(capture.read(src))
 	{
@@ -249,7 +266,39 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 			waitKey(2);
 			//形状识别
 			Mat p2=ShapeRecognize(noiseremove,boundingBox);
-	
+			//get the bounding boxes' centers
+			centers.clear();
+	        getCentersFromBoxes(boundingBox,centers);
+			//Kalman Track
+			if(centers.size()>0)
+			{
+				tracker.Update(centers);
+
+				cout << tracker.tracks.size()  << endl;
+
+				for(int i=0;i<tracker.tracks.size();i++)
+				{
+					if(tracker.tracks[i]->trace.size()>1)
+					{
+						for(int j=0;j<tracker.tracks[i]->trace.size()-1;j++)
+						{
+							line(re_src,tracker.tracks[i]->trace[j],tracker.tracks[i]->trace[j+1],colorMode[tracker.tracks[i]->track_id%3],2,CV_AA);
+						}
+					}
+				}
+			}
+
+/*
+			//TODO:根据statePt点确定一个搜索区域（boundingBox: predictRegion）
+			if(predictRegion contains object)
+			{
+				measurement.at<float>(0)=foundBox.x;
+				measurement.at<float>(1)=foundBox.y;
+			}else{
+				//全局搜索目标
+				Mat p2=ShapeRecognize(noiseremove,boundingBox);
+			}
+			*/
 
 			for (int i=0;i<boundingBox.size();i++)
 			{
@@ -257,9 +306,6 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 				Point rightdown(boundingBox[i].x+boundingBox[i].width,boundingBox[i].y+boundingBox[i].height);
 				rectangle(re_src,leftup,rightdown,colorMode[mode],2);
 				Mat recognizeMat=re_src(boundingBox[i]);//cut the traffic signs
-
-
-
 				
 
 				//for different color, set different neural network
