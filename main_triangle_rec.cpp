@@ -2,11 +2,13 @@
 #include "traffic.h"
 #include "math_utils.h"
 #include "socket_server_task.h"
+//#include "Drogonfly_ImgRead.h"
 
 //void testAccuracy(String path,int num_folder);
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
-
+//void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
+//	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
 
 void covertImg2HOG(Mat img,vector<float> &descriptors)
 {
@@ -204,8 +206,6 @@ int main()
 		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
 	}
 	
-
-
 	//test
 	test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
 	cvReleaseMat(&g_mat);
@@ -338,6 +338,149 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 		cout<<"时间："<<time<<endl;
 	}	
 }
+
+
+
+
+/*void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
+	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue)
+{
+	//摄像头相关初始化
+	IplImage* frame;
+	CvVideoWriter *writer=NULL;
+	IplImage *resize_tmp=cvCreateImage(Size(800,600),8,3);
+	bool saveFlag=true;
+	Drogonfly_ImgRead p;
+	p.Camera_Intial();
+
+	float send=0;
+	vector<Rect> boundingBox;
+	Mat src,re_src,thresh;
+	Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};
+
+
+	while(1)
+	{
+		frame=p.Camera2IplImage();
+		if(saveFlag)
+		{
+			writer = cvCreateVideoWriter("trafficSign7.avi",CV_FOURCC('X','V','I','D'),10,cvGetSize(resize_tmp),1);
+			saveFlag=false;
+		}
+		//保存视频
+		cvWriteFrame(writer,frame); 
+		int start=cvGetTickCount();
+		src=Mat(frame);
+		resize(src,re_src,Size(640,480));
+		Mat ihls_image = convert_rgb_to_ihls(re_src);
+		//分别对黄蓝红颜色检测
+		for (int mode=0;mode<3;mode++)
+		{
+			Mat nhs_image = convert_ihls_to_nhs(ihls_image,mode);//0:yellow,1:blue,2:red
+			Mat noiseremove;
+			//分别显示黄蓝红色的nhs二值图像 
+			stringstream ss;
+			string index;
+			ss<<mode;
+			ss>>index;
+			string tmp="nhs_image"+index;
+			//滤波
+			medianBlur(nhs_image,noiseremove,3);
+			imshow(tmp,noiseremove);
+			waitKey(2);
+			//形状识别
+			Mat p2=ShapeRecognize(noiseremove,boundingBox);
+			for (int i=0;i<boundingBox.size();i++)
+			{
+				Point leftup(boundingBox[i].x,boundingBox[i].y);
+				Point rightdown(boundingBox[i].x+boundingBox[i].width,boundingBox[i].y+boundingBox[i].height);
+				rectangle(re_src,leftup,rightdown,colorMode[mode],2);
+				Mat recognizeMat=re_src(boundingBox[i]);//cut the traffic signs
+				//for different color, set different neural network
+				if(mode==0)//yellow
+				{
+					int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
+					//set the recognition result to the image
+					switch(result)
+					{
+					case 1:
+						setLabel(re_src,"plus",boundingBox[i]);
+						send=1.0;
+						break;
+					case 2:
+						setLabel(re_src,"man",boundingBox[i]);
+						send=2.0;break;
+					case 3:
+						setLabel(re_src,"slow",boundingBox[i]);
+						send=3.0;break;
+					default:
+						break;
+					}
+				}
+				else if(mode==1)//blue
+				{
+					int result=Recognize(nnetwork_RoundBlue,pca_RoundBlue,recognizeMat,ROUNDBLUE_CLASSES);
+					//set the recognition result to the image
+					switch(result)
+					{
+					case 1:
+						setLabel(re_src,"car",boundingBox[i]);
+						send=4.0;break;
+					case 2:
+						setLabel(re_src,"bike",boundingBox[i]);
+						send=5.0;break;
+					default:
+						break;
+					}
+				}
+				else{
+					int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
+					//set the recognition result to the image
+					switch(result)
+					{
+					case 1:
+						setLabel(re_src,"NoSound",boundingBox[i]);
+						send=6.0;break;
+					case 2:
+						setLabel(re_src,"30",boundingBox[i]);
+						send=7.0;break;
+					default:
+						break;
+					}
+				}
+			}
+			imshow("re_src",re_src);
+			waitKey(5);
+			boundingBox.clear();//必须清楚当前颜色的框，不然下一种颜色的框的起始位置就不是0了
+		}
+		//socket通信
+		if (!gb_filled)
+		{
+			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();
+			*(float *)CV_MAT_ELEM_PTR(*g_mat, 1, 0) = send;
+
+			gb_filled = true;
+		}
+
+		//如果退出，做相关的清除工作
+		int c=cvWaitKey(1);
+		if (c==27)
+		{
+			p.ClearBuffer();
+			cvReleaseVideoWriter(&writer); 
+			break;
+		}
+
+		int end=cvGetTickCount();
+		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
+		cout<<"时间："<<time<<endl;
+	}	
+
+
+}*/
+
+
+
 
 
 
