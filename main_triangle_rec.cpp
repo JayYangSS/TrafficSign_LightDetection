@@ -2,13 +2,13 @@
 #include "traffic.h"
 #include "math_utils.h"
 #include "socket_server_task.h"
-//#include "Drogonfly_ImgRead.h"
+#include "Drogonfly_ImgRead.h"
 
 //void testAccuracy(String path,int num_folder);
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
-//void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
-//	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
+void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
+	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
 
 void covertImg2HOG(Mat img,vector<float> &descriptors)
 {
@@ -207,7 +207,7 @@ int main()
 	}
 	
 	//test
-	test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
+	testCamera(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -342,7 +342,7 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 
 
 
-/*void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
+void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue)
 {
 	//摄像头相关初始化
@@ -477,7 +477,7 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 	}	
 
 
-}*/
+}
 
 
 
