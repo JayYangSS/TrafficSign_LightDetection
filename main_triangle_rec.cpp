@@ -206,7 +206,7 @@ int main()
 		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
 	}
 	
-	//test
+	//test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
 	testCamera(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
 	cvReleaseMat(&g_mat);
 	system("pause");
