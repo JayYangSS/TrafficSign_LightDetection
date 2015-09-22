@@ -4,6 +4,7 @@
 #include "socket_server_task.h"
 #include "Drogonfly_ImgRead.h"
 #include "TrafficLightDetection/std_tlr.h"
+#include <Windows.h>
 
 //test function
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
@@ -167,6 +168,13 @@ bool isTrain=false;//traffic signs
 bool TRAIN=false;//TL
 bool HORZ=false;//TL
 
+
+DWORD WINAPI TRAFFICLIGHT(LPVOID lpParamter)
+{
+	TLDetection();
+	return 0;
+}
+
 int main()
 {
 	//socket
@@ -221,9 +229,12 @@ int main()
 		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
 	}
 	
+    //create thread to handle TL detection	
+	HANDLE hThread = CreateThread(NULL,0,TRAFFICLIGHT,NULL,0,NULL);
+		CloseHandle(hThread);
+
 	test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
 	//testCamera(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
-	//TLDetection();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -238,7 +249,7 @@ void TLDetection()
 	vector<Rect> found_filtered;
 	int a[2]={0,0};
 
-	capture = cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\huanhu_clip2.avi");
+	capture = cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
 	int frameFPS=cvGetCaptureProperty(capture,CV_CAP_PROP_FPS);
 	int frameNUM=cvGetCaptureProperty(capture,CV_CAP_PROP_FRAME_COUNT);
 	char Info[200];
