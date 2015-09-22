@@ -58,8 +58,6 @@ int Recognize(CvANN_MLP &nnetwork,PCA &pca,Mat test_img,int numClasses)
 			// apply PCA to that image to reduce it dimension
 			Mat test_img_Reduce = pca.project(test_img_vect);
 
-
-
 			int pred;//predict result
 			pred = predict(test_img_Reduce, nnetwork,numClasses);
 			//cout << " predicted value :   " << pred<< endl << endl << endl;

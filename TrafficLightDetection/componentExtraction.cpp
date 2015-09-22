@@ -20,18 +20,15 @@ void componentExtraction(IplImage* inputImage,IplImage* srcImage,int* p,vector<R
 	IplImage* imageGrayScale = cvCreateImage(cvSize(iWidth,iHeight),IPL_DEPTH_8U,1);
 	if(!imageGrayScale)
 		exit(EXIT_FAILURE);
-	
 	cvCvtColor(srcImage,imageGrayScale,CV_BGR2GRAY);
-	//Mat src = cvarrToMat(srcImage), dst0 = cvarrToMat(imageGrayScale), dst = dst0;
-	//cvtColor(src, dst, CV_BGR2GRAY, dst.channels());
 
-
+#if ISDEBUG_TL
 	cvShowImage("gray",imageGrayScale);
 	cvWaitKey(5);
+#endif
 
 	//thresholding for size of components
 	const int thresholding = 4;
-
 	int i=0,j=0;
 	CvRect oRect;
 	//CvRect ooRect;

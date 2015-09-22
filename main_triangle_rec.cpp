@@ -257,8 +257,11 @@ void TLDetection()
 		found_filtered.clear();
 		cvResize(frame,resize_tmp);
 		imageSeg = colorSegmentationTL(resize_tmp);
+
+#if ISDEBUG_TL
 		cvShowImage("imgseg",imageSeg);
 		cvWaitKey(5);
+#endif
 		imageNoiseRem=noiseRemoval(imageSeg);
 		componentExtraction(imageSeg,resize_tmp,a,found_filtered);
 
@@ -328,22 +331,20 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 			string tmp="nhs_image"+index;
 			//ÂË²¨
 			medianBlur(nhs_image,noiseremove,3);
+
+#if ISDEBUG_TS
 			imshow(tmp,noiseremove);
 			waitKey(2);
-			//ÐÎ×´Ê¶±ð
-			Mat p2=ShapeRecognize(noiseremove,boundingBox);
-	
+#endif
 
+			//shape recognition
+			Mat p2=ShapeRecognize(noiseremove,boundingBox);
 			for (int i=0;i<boundingBox.size();i++)
 			{
 				Point leftup(boundingBox[i].x,boundingBox[i].y);
 				Point rightdown(boundingBox[i].x+boundingBox[i].width,boundingBox[i].y+boundingBox[i].height);
 				rectangle(re_src,leftup,rightdown,colorMode[mode],2);
 				Mat recognizeMat=re_src(boundingBox[i]);//cut the traffic signs
-
-
-
-				
 
 				//for different color, set different neural network
 				if(mode==0)//yellow
