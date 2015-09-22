@@ -3,12 +3,15 @@
 #include "math_utils.h"
 #include "socket_server_task.h"
 #include "Drogonfly_ImgRead.h"
+#include "TrafficLightDetection/std_tlr.h"
 
-//void testAccuracy(String path,int num_folder);
+//test function
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
 void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
+void TLDetection();
+
 
 void covertImg2HOG(Mat img,vector<float> &descriptors)
 {
@@ -67,8 +70,6 @@ int readdata(String path,int num_folder,String outputfile)
 	dataSet.close();
 	return sampleNum;
 }
-
-
 
 void shuffleDataSet(string path,string outputfile)
 {
@@ -129,7 +130,6 @@ void shuffleDataSet(string path,string outputfile)
 	fs.release(); 
 }
 
-
 void savePCA(string filepath,string outputPath)
 {
 	Mat dataset;
@@ -156,23 +156,41 @@ void savePCA(string filepath,string outputPath)
 	fs.release();
 }
 
+//TL HOG descriptors
+Size Win_vertical(15,30),block_vertical(5,10),blockStride_vertical(5,5),cell_vertical(5,5);
+HOGDescriptor myHOG_vertical(Win_vertical,block_vertical,blockStride_vertical,cell_vertical,9,1,-1.0,0,0.2,true,64);
+HOGDescriptor myHOG_horz(Size(36,12),Size(12,6),Size(6,6),Size(6,6),9,1,-1.0,0,0.2,true,64);
+int Frame_pos;//当前帧位置
+
+//control flag
+bool isTrain=false;//traffic signs
+bool TRAIN=false;//TL
+bool HORZ=false;//TL
 
 int main()
 {
-	//socket通信
+	//socket
 	SocketInit();
 	g_mat = cvCreateMat(2, 1, CV_32FC1);//用于传输数据
 	
-	bool isTrain=false;
+	//BP neural network
 	CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue;
 	PCA pca,pca_RoundRim,pca_RoundBlue;
 	loadPCA("pcaTriangle.yml", pca);
 	loadPCA("pcaRoundRim.yml", pca_RoundRim);
 	loadPCA("pcaRoundBlue.yml", pca_RoundBlue);
 
+	//TL detection HOG descriptor
+	CvFont font; 
+	cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX, .5, .5, 0, 1, 8);
+	if(HORZ)
+		hogSVMTrainTL(myHOG_horz,TRAIN,HORZ);
+	else
+		hogSVMTrainTL(myHOG_vertical,TRAIN,HORZ);
+    
+	//BP neural network training
 	if(isTrain)
 	{
-		
 		//神经网络的训练工作
 		//triangle
 		String path="D:\\JY\\JY_TrainingSamples\\TrafficSign\\triangle";
@@ -182,8 +200,6 @@ int main()
 		NeuralNetTrain("shuffleTriangle.yml","xmlTriangle.xml",pca,triangleNum,TRIANGLE_CLASSES);
 		nnetwork.load("xmlTriangle.xml", "xmlTriangle");
 
-
-
 		//RoundRim
 		String path_RoundRim="D:\\JY\\JY_TrainingSamples\\TrafficSign\\RoundRim";
 		int roundrimNum=readdata(path_RoundRim,ROUNDRIM_CLASSES,"RoundRim.txt");
@@ -191,7 +207,6 @@ int main()
 		savePCA("shuffleRoundRim.yml","pcaRoundRim.yml");
 		NeuralNetTrain("shuffleRoundRim.yml","xmlRoundRim.xml",pca_RoundRim,roundrimNum,ROUNDRIM_CLASSES);
 		nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
-
 
 		//RoundBlue
 		String path_RoundBlue="D:\\JY\\JY_TrainingSamples\\TrafficSign\\RoundBlue";
@@ -206,12 +221,80 @@ int main()
 		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
 	}
 	
-	//test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
-	testCamera(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
+	test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
+	//testCamera(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
+	//TLDetection();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
 
+
+void TLDetection()
+{
+	IplImage *frame = NULL,*imageSeg=NULL,*imageNoiseRem =NULL;
+	IplImage *resize_tmp=cvCreateImage(Size(800,600),8,3);
+	CvCapture *capture=NULL;
+	CvVideoWriter *writer=NULL;
+	vector<Rect> found_filtered;
+	int a[2]={0,0};
+
+	capture = cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\huanhu_clip2.avi");
+	int frameFPS=cvGetCaptureProperty(capture,CV_CAP_PROP_FPS);
+	int frameNUM=cvGetCaptureProperty(capture,CV_CAP_PROP_FRAME_COUNT);
+	char Info[200];
+	cvNamedWindow("resize_frame");
+
+	while (1)
+	{
+		CvFont font; 
+		cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX, .5, .5, 0, 1, 8);
+
+		int Start=cvGetTickCount();
+		frame = cvQueryFrame(capture);
+		if(!frame)break;
+
+
+		found_filtered.clear();
+		cvResize(frame,resize_tmp);
+		imageSeg = colorSegmentationTL(resize_tmp);
+		cvShowImage("imgseg",imageSeg);
+		cvWaitKey(5);
+		imageNoiseRem=noiseRemoval(imageSeg);
+		componentExtraction(imageSeg,resize_tmp,a,found_filtered);
+
+
+		//socket
+		if (!gb_filled)
+		{
+			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();
+			if(a[0]>0)//red light
+				*(float *)CV_MAT_ELEM_PTR(*g_mat, 1, 0) = 9.0;
+			if(a[1]>0)//greed light
+				*(float *)CV_MAT_ELEM_PTR(*g_mat, 1, 0) = 10.0;
+			gb_filled = true;
+		}
+
+		int currentFrame=cvGetCaptureProperty(capture,CV_CAP_PROP_POS_FRAMES);
+		sprintf(Info,"Total frames:%d,current frame:%d",frameNUM,currentFrame);
+		cvPutText(resize_tmp,Info,Point(25,17),&font,Scalar(255,255,255));
+		cvShowImage("resize_frame",resize_tmp);
+		cvWaitKey(5);
+
+		//save video
+		cvWriteFrame(writer,resize_tmp);
+		cvReleaseImage(&imageSeg);
+		cvReleaseImage(&imageNoiseRem);
+		cout << "Frame Grabbed." << endl;
+		int End=cvGetTickCount();
+		float time=(float)(End-Start)/(cvGetTickFrequency()*1000000);
+		cout<<"Time："<<time<<endl;
+	}
+
+	cvDestroyAllWindows();
+	cvReleaseCapture(&capture);
+	cvReleaseImage(&resize_tmp);
+	cvReleaseVideoWriter(&writer);
+}
 
 
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
@@ -338,8 +421,6 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 		cout<<"时间："<<time<<endl;
 	}	
 }
-
-
 
 
 void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
