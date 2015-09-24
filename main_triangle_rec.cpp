@@ -389,12 +389,17 @@ void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwor
 			waitKey(2);
 			//ÐÎ×´Ê¶±ð
 			Mat p2=ShapeRecognize(noiseremove,boundingBox);
+			if(boundingBox.size()==0)
+			{
+				send=0;
+			}
 			for (int i=0;i<boundingBox.size();i++)
 			{
 				Point leftup(boundingBox[i].x,boundingBox[i].y);
 				Point rightdown(boundingBox[i].x+boundingBox[i].width,boundingBox[i].y+boundingBox[i].height);
 				rectangle(re_src,leftup,rightdown,colorMode[mode],2);
 				Mat recognizeMat=re_src(boundingBox[i]);//cut the traffic signs
+			
 				//for different color, set different neural network
 				if(mode==0)//yellow
 				{
