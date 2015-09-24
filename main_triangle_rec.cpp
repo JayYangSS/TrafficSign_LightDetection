@@ -12,6 +12,7 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
 void TLDetection();
+void cameraMultiThread();
 
 
 void covertImg2HOG(Mat img,vector<float> &descriptors)
@@ -167,6 +168,11 @@ int Frame_pos;//当前帧位置
 bool isTrain=false;//traffic signs
 bool TRAIN=false;//TL
 bool HORZ=false;//TL
+bool saveFlag=true;
+IplImage *resize_TLR=cvCreateImage(Size(800,600),8,3);
+IplImage *resize_TSR=cvCreateImage(Size(800,600),8,3);
+//lock of thread
+HANDLE hMutex;   
 
 
 DWORD WINAPI TRAFFICLIGHT(LPVOID lpParamter)
@@ -175,6 +181,27 @@ DWORD WINAPI TRAFFICLIGHT(LPVOID lpParamter)
 	return 0;
 }
 
+DWORD WINAPI TL_FRAME(LPVOID lpParamter)
+{
+	WaitForSingleObject(hMutex,INFINITE);
+	IplImage* frame=(IplImage*)lpParamter;
+	IplImage *imageSeg=NULL,*imageNoiseRem =NULL;
+
+	//found_filtered.clear();
+	cvResize(frame,resize_TLR);
+
+	//imageSeg = colorSegmentation(resize_TLR);
+#if ISDEBUG_TL
+	cvShowImage("imgseg",imageSeg);
+	cvWaitKey(5);
+#endif
+	//imageNoiseRem=noiseRemoval(imageSeg);
+	//componentExtraction(imageSeg,resize_TLR,a);
+	cvShowImage("resize_frame",resize_TLR);
+	cvWaitKey(5);
+	ReleaseMutex(hMutex);
+	return 0;
+}
 int main()
 {
 	//socket
@@ -230,11 +257,12 @@ int main()
 	}
 	
     //create thread to handle TL detection	
-	HANDLE hThread = CreateThread(NULL,0,TRAFFICLIGHT,NULL,0,NULL);
-		CloseHandle(hThread);
+	//HANDLE hThread = CreateThread(NULL,0,TRAFFICLIGHT,NULL,0,NULL);
+	//	CloseHandle(hThread);
 
-	test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
+	//test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
 	//testCamera(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
+	cameraMultiThread();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -451,17 +479,20 @@ void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwor
 	Mat src,re_src,thresh;
 	Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};
 
+#if SAVEVIDEO
+	writer = cvCreateVideoWriter("test6.avi",CV_FOURCC('X','V','I','D'),10,cvGetSize(resize_tmp),1);
+#endif
+	
 
 	while(1)
 	{
 		frame=p.Camera2IplImage();
-		if(saveFlag)
-		{
-			writer = cvCreateVideoWriter("trafficSign7.avi",CV_FOURCC('X','V','I','D'),10,cvGetSize(resize_tmp),1);
-			saveFlag=false;
-		}
 		//保存视频
-		cvWriteFrame(writer,frame); 
+#if SAVEVIDEO
+		cvResize(frame,resize_tmp);
+		cvWriteFrame(writer,resize_tmp); 
+#endif
+
 		int start=cvGetTickCount();
 		src=Mat(frame);
 		resize(src,re_src,Size(640,480));
@@ -573,8 +604,51 @@ void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwor
 }
 
 
+void cameraMultiThread()
+{
+	Drogonfly_ImgRead p;
+	p.Camera_Intial();
+	IplImage* frame;
+	IplImage *resize_tmp=cvCreateImage(Size(800,600),8,3);
+	CvVideoWriter *writer=NULL;
 
 
+#if SAVEVIDEO
+	writer = cvCreateVideoWriter("trafficSign7.avi",CV_FOURCC('X','V','I','D'),10,Size(800,600),1);
+#endif
+
+	
+	hMutex = CreateMutex(NULL, FALSE, "IMG");  
+	while(1)
+	{
+		WaitForSingleObject(hMutex,INFINITE);
+		frame=p.Camera2IplImage();
+		cvResize(frame,resize_tmp);
+		cvShowImage("camera",resize_tmp);
+		cvWaitKey(5);
+
+#if SAVEVIDEO
+		cvWriteFrame(writer,resize_tmp); 
+#endif
+		//TLR and TSR
+		//create thread to handle TL detection	
+		HANDLE hThread = CreateThread(NULL,0,TL_FRAME,frame,0,NULL);
+		CloseHandle(hThread);
+
+
+		//如果退出，做相关的清除工作
+		int c=cvWaitKey(1);
+		if (c==27)
+		{
+			p.ClearBuffer();
+#if SAVEVIDEO
+			cvReleaseVideoWriter(&writer); 
+#endif
+			break;
+		}
+		ReleaseMutex(hMutex);  //释放线程锁
+	}
+}
 
 
 /*
