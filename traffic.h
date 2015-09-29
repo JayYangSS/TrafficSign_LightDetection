@@ -35,6 +35,7 @@
 #define TRIANGLE 0
 #define CIRCLE 1
 #define HEXA 2
+#define RECTANGLE 3
 
 
 //HardExample：负样本个数。如果HardExampleNO大于0，表示处理完初始负样本集后，继续处理HardExample负样本集。
@@ -66,6 +67,13 @@ public:
 	}
 
 };
+class ShapeRecResult{
+public:
+	Rect box;
+	int color;
+	int shape;
+};
+
 
 IplImage* colorSegmentation(IplImage* inputImage);
 void rgb2hsi(int red, int green, int blue, int& hue, int& saturation, int& intensity );
@@ -75,7 +83,7 @@ void hogSVMTrain( HOGDescriptor &myHOG,bool TRAIN);
 //void BoxDetect(Mat src,Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered);
 void BoxDetect(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered);
 int SortRect(Mat src_test,int num,DetecResult *Rst,char Direct);
-Mat ShapeRecognize(Mat src,vector<Rect>&boundingBox);
+Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult);
 void showHist(Mat src);
 //显示标注信息
 void setLabel(cv::Mat& im, const std::string label, Rect r);

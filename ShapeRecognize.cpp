@@ -1,6 +1,5 @@
 #include "traffic.h"
-
-
+#include "math_utils.h"
 //Helper function to find a cosine of angle between vectors from pt0->pt1 and pt0->pt2
 static double angle(cv::Point pt1, cv::Point pt2, cv::Point pt0)
 {
@@ -11,8 +10,44 @@ static double angle(cv::Point pt1, cv::Point pt2, cv::Point pt0)
 	return (dx1*dx2 + dy1*dy2)/sqrt((dx1*dx1 + dy1*dy1)*(dx2*dx2 + dy2*dy2) + 1e-10);
 }
 
-
-
+//识别nhls图像中矩形框内的颜色
+int RecColorInBox(Mat img)
+{
+	int redCount=0;
+	int blueCount=0;
+	int yellowCount=0;
+	assert(img.channels() == 1);
+	for (int i = 0; i < img.rows; ++i)
+	{
+		const uchar *img_data = img.ptr<uchar> (i);
+		for (int j = 0; j < img.cols; ++j)
+		{
+			uchar pixelVal=*img_data++;
+			if(pixelVal==R_VALUE)
+				redCount++;
+			else if(pixelVal==Y_VALUE)
+				yellowCount++;
+			else if(pixelVal==B_VALUE)
+				blueCount++;
+			else
+				continue;
+		}
+	}
+	//find max value
+	int finalVal=0;
+	int tmpCount=0;
+	if (redCount>=yellowCount)
+	{
+		tmpCount=redCount;
+		finalVal=R_VALUE;
+	}else{
+		tmpCount=yellowCount;
+		finalVal=Y_VALUE;
+	}
+	if (blueCount>tmpCount)
+		finalVal=B_VALUE;
+	return finalVal;
+}
 
 // Helper function to display text in the center of a contour
 void setLabel(cv::Mat& im, const std::string label, Rect r)
@@ -30,8 +65,9 @@ void setLabel(cv::Mat& im, const std::string label, Rect r)
 }
 
 
-Mat ShapeRecognize(Mat src,vector<Rect>&boudingBox)
+Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult)
 {
+	ShapeRecResult tmp;
 	if (src.channels()!=1)
 	{
 		cout<<"The input image for shape recognition must be binary"<<endl;
@@ -70,7 +106,11 @@ Mat ShapeRecognize(Mat src,vector<Rect>&boudingBox)
 			if (approx.size() == 3)
 			{
 				setLabel(dst, "TRI", rect);    // Triangles
-				boudingBox.push_back(rect);
+				tmp.box=rect;
+				tmp.shape=TRIANGLE;//三角形形状为1
+				Mat cutMat=src(rect);
+				tmp.color=RecColorInBox(cutMat);
+				shapeResult.push_back(tmp);
 			}
 				
 
@@ -93,10 +133,24 @@ Mat ShapeRecognize(Mat src,vector<Rect>&boudingBox)
 
 				// Use the degrees obtained above and the number of vertices
 				// to determine the shape of the contour
+				if (vtc == 4 && mincos >= -0.1 && maxcos <= 0.3)
+				{
+					setLabel(dst, "RECT", rect);
+					tmp.box=rect;
+					tmp.shape=RECTANGLE;//2表示矩形
+					Mat cutMat=src(rect);
+					tmp.color=RecColorInBox(cutMat);
+					shapeResult.push_back(tmp);
+				}
+					
 				if (vtc <= 6 && mincos >= -0.8 && maxcos <= -0.45)
 				{
 					setLabel(dst, "Octagon",rect);
-					boudingBox.push_back(rect);
+					tmp.box=rect;
+					tmp.shape=HEXA;//3表示六边形
+					Mat cutMat=src(rect);
+					tmp.color=RecColorInBox(cutMat);
+					shapeResult.push_back(tmp);
 				}
 					
 			}
@@ -111,11 +165,23 @@ Mat ShapeRecognize(Mat src,vector<Rect>&boudingBox)
 					std::abs(1 - (area / (CV_PI * std::pow(radius, 2)))) <= 0.2)
 				{
 					setLabel(dst, "CIR", rect);
-					boudingBox.push_back(rect);
+					tmp.box=rect;
+					tmp.shape=CIRCLE;//4表示矩形
+					Mat cutMat=src(rect);
+					tmp.color=RecColorInBox(cutMat);
+					shapeResult.push_back(tmp);
 				}
+				/*vector<Vec3f> circles;
+				Mat tmp=src(rect);
+				HoughCircles( src, circles, CV_HOUGH_GRADIENT, 1, tmp.rows/8, 200, 100, 0, 0 );
+				if (circles.size()>0)
+				{
+					setLabel(dst, "CIR", rect);
+					boudingBox.push_back(rect);
+				}*/
 					
 			}
-
+		
 	    }
 		return dst;
 	}
