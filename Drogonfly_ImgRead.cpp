@@ -78,11 +78,11 @@ IplImage* Drogonfly_ImgRead::Camera2IplImage(void)
 {
 	Image convertedImage;
 	error= cam.RetrieveBuffer(&rawImage);
-	if (error!=PGRERROR_OK)
+	/*if (error!=PGRERROR_OK)
 	{
 		error.PrintErrorTrace();
 		return NULL;
-	}
+	}*/
 	error = rawImage.Convert( FlyCapture2::PIXEL_FORMAT_BGR, &convertedImage);
 	if (error !=PGRERROR_OK)
 	{
