@@ -1,5 +1,7 @@
 #include "traffic.h"
 #include "math_utils.h"
+
+#define  MINIST_SIZE 200//the threshol of the bonudingbox size,if the size of the bounding box is smaller than it , make it invalid
 //Helper function to find a cosine of angle between vectors from pt0->pt1 and pt0->pt2
 static double angle(cv::Point pt1, cv::Point pt2, cv::Point pt0)
 {
@@ -100,25 +102,35 @@ Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult)
 
 
 			// Skip small or non-convex objects 
-			if (std::fabs(cv::contourArea(contours[i])) < 100 || !cv::isContourConvex(approx))
+			if (std::fabs(cv::contourArea(contours[i])) < MINIST_SIZE || !cv::isContourConvex(approx))
 				continue;
-
-			if (approx.size() == 3)
+			// Number of vertices of polygonal curve
+			int vtc = approx.size();
+			if (vtc == 3)
 			{
-				setLabel(dst, "TRI", rect);    // Triangles
-				tmp.box=rect;
-				tmp.shape=TRIANGLE;//三角形形状为1
-				Mat cutMat=src(rect);
-				tmp.color=RecColorInBox(cutMat);
-				shapeResult.push_back(tmp);
+				//TODO:需要进一步跟进三个角的角度值判断，标志牌一般为正三角形
+				// Get the cosines of all corners
+				std::vector<double> cos;
+				int checkpoint=2;
+				for (checkpoint = 2; checkpoint < vtc+1; checkpoint++)
+				{
+					double ang=angle(approx[checkpoint%vtc], approx[checkpoint-2], approx[checkpoint-1]);
+					if (ang<0||ang>0.7)break;
+				}
+				if (checkpoint==4)
+				{
+					setLabel(dst, "TRI", rect);    // Triangles
+					tmp.box=rect;
+					tmp.shape=TRIANGLE;//三角形形状为1
+					Mat cutMat=src(rect);
+					tmp.color=RecColorInBox(cutMat);
+					shapeResult.push_back(tmp);
+				}
 			}
 				
 
-			else if (approx.size() >= 4 && approx.size() <= 6)
+			else if (vtc >= 4 && vtc <= 6)
 			{
-				// Number of vertices of polygonal curve
-				int vtc = approx.size();
-
 				// Get the cosines of all corners
 				std::vector<double> cos;
 				for (int j = 2; j < vtc+1; j++)

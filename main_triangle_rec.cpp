@@ -98,6 +98,7 @@ bool isContainSigns(Mat img,Rect searchRegion,float thresholdRatio)
 		return true;
 	return false;
 }
+
 void covertImg2HOG(Mat img,vector<float> &descriptors)
 {
 	HOGDescriptor hog(Size(40,40),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
@@ -106,6 +107,7 @@ void covertImg2HOG(Mat img,vector<float> &descriptors)
 	cout<<"HOG特征子维数："<<descriptors.size()<<endl;
 }
 
+//get the HOG features(float array) of each image in the specified folder
 int readdata(String path,int num_folder,String outputfile)
 {
 	fstream dataSet(outputfile.c_str(),ios::out);
@@ -155,8 +157,6 @@ int readdata(String path,int num_folder,String outputfile)
 	dataSet.close();
 	return sampleNum;
 }
-
-
 
 void shuffleDataSet(string path,string outputfile)
 {
@@ -217,7 +217,6 @@ void shuffleDataSet(string path,string outputfile)
 	fs.release(); 
 }
 
-
 void savePCA(string filepath,string outputPath)
 {
 	Mat dataset;
@@ -254,9 +253,6 @@ int main()
 	bool isTrain=false;
 	CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue;
 	PCA pca,pca_RoundRim,pca_RoundBlue;
-	loadPCA("pcaTriangle.yml", pca);
-	loadPCA("pcaRoundRim.yml", pca_RoundRim);
-	loadPCA("pcaRoundBlue.yml", pca_RoundBlue);
 
 	if(isTrain)
 	{
@@ -267,6 +263,7 @@ int main()
 		int triangleNum=readdata(path,TRIANGLE_CLASSES,"triangle.txt");
 		shuffleDataSet("triangle.txt","shuffleTriangle.yml");
 		savePCA("shuffleTriangle.yml","pcaTriangle.yml");
+		loadPCA("pcaTriangle.yml", pca);
 		NeuralNetTrain("shuffleTriangle.yml","xmlTriangle.xml",pca,triangleNum,TRIANGLE_CLASSES);
 		nnetwork.load("xmlTriangle.xml", "xmlTriangle");
 
@@ -277,6 +274,7 @@ int main()
 		int roundrimNum=readdata(path_RoundRim,ROUNDRIM_CLASSES,"RoundRim.txt");
 		shuffleDataSet("RoundRim.txt","shuffleRoundRim.yml");
 		savePCA("shuffleRoundRim.yml","pcaRoundRim.yml");
+		loadPCA("pcaRoundRim.yml", pca_RoundRim);
 		NeuralNetTrain("shuffleRoundRim.yml","xmlRoundRim.xml",pca_RoundRim,roundrimNum,ROUNDRIM_CLASSES);
 		nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
 
@@ -286,9 +284,13 @@ int main()
 		int roundblueNum=readdata(path_RoundBlue,ROUNDBLUE_CLASSES,"RoundBlue.txt");
 		shuffleDataSet("RoundBlue.txt","shuffleRoundBlue.yml");
 		savePCA("shuffleRoundBlue.yml","pcaRoundBlue.yml");
+		loadPCA("pcaRoundBlue.yml", pca_RoundBlue);
 		NeuralNetTrain("shuffleRoundBlue.yml","xmlRoundBlue.xml",pca_RoundBlue,roundblueNum,ROUNDBLUE_CLASSES);
 		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
 	}else{
+		loadPCA("pcaTriangle.yml", pca);
+		loadPCA("pcaRoundRim.yml", pca_RoundRim);
+		loadPCA("pcaRoundBlue.yml", pca_RoundBlue);
 		nnetwork.load("xmlTriangle.xml", "xmlTriangle");
 		nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
 		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
@@ -579,8 +581,8 @@ void test_RBYcolorMerge_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvAN
 	
 	//CTracker tracker(0.2,0.5,60.0,10,10);
 	//process every frame
-	capture.open("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
-	//capture.open("D:\\JY\\JY_TrainingSamples\\比赛视频截取\\signs.mp4");
+	//capture.open("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
+	capture.open("D:\\JY\\JY_TrainingSamples\\比赛视频截取\\StopSign.mp4");
 	while(capture.read(src))
 	{
 		float send[7]={0,0,0,0,0,0,0};
@@ -706,7 +708,9 @@ void test_RBYcolorMerge_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvAN
 					}
 					count=0;
 					break;	
-
+				case 4:
+					setLabel(re_src,"work",boundingBox);
+					break;
 				default:
 					break;
 				}
@@ -831,6 +835,9 @@ void test_RBYcolorMerge_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvAN
 					count=0;
 					break;	
 					//send=7.0;break;
+				case 3:
+					setLabel(re_src,"stop",boundingBox);
+					break;
 				default:
 					break;
 				}
@@ -848,7 +855,10 @@ void test_RBYcolorMerge_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvAN
 			}
 			cout<<send[i]<<" ";
 		}
-		cout<<""<<endl;
+
+		int end=cvGetTickCount();//测试发现颜色分割后合在一张图上速度变快
+		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
+		cout<<"  time:"<<time<<endl;
 		imshow("re_src",re_src);
 		waitKey(5);
 		shapeResult.clear();
