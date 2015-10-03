@@ -22,7 +22,6 @@ void covertImg2HOG(Mat img,vector<float> &descriptors)
 
 	cout<<"HOG特征子维数："<<descriptors.size()<<endl;
 }
-
 int readdata(String path,int num_folder,String outputfile)
 {
 	fstream dataSet(outputfile.c_str(),ios::out);
@@ -72,7 +71,6 @@ int readdata(String path,int num_folder,String outputfile)
 	dataSet.close();
 	return sampleNum;
 }
-
 void shuffleDataSet(string path,string outputfile)
 {
 	// raw dataset file  8729(rows) * 4800(cols)  not yet shuffle  
@@ -157,7 +155,7 @@ void savePCA(string filepath,string outputPath)
 	pcaFile.release();
 	fs.release();
 }
-
+void openMP_MultiThreadVideo();
 //TL HOG descriptors
 Size Win_vertical(15,30),block_vertical(5,10),blockStride_vertical(5,5),cell_vertical(5,5);
 HOGDescriptor myHOG_vertical(Win_vertical,block_vertical,blockStride_vertical,cell_vertical,9,1,-1.0,0,0.2,true,64);
@@ -170,16 +168,140 @@ bool TRAIN=false;//TL
 bool HORZ=false;//TL
 bool saveFlag=true;
 IplImage *resize_TLR=cvCreateImage(Size(800,600),8,3);
-IplImage *resize_TSR=cvCreateImage(Size(800,600),8,3);
-//lock of thread
-HANDLE hMutex;   
-int a[2]={0,0};
-vector<Rect> found_filtered;
+IplImage *resize_TSR=cvCreateImage(Size(800,600),8,3); 
+int a[2]={0,0};//detection result
+vector<Rect> found_TL;//the bounding box for traffic lights
+vector<Rect> found_TSR;//the bounding box for traffic signs
+Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};//the color mode for the traffic sign detection
+CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue;//neural networks for three different kinds of traffic signs 
+PCA pca,pca_RoundRim,pca_RoundBlue;
 
-DWORD WINAPI TRAFFICLIGHT(LPVOID lpParamter)
+
+void TLDetectionPerFrame(IplImage *frame)
 {
-	TLDetection();
-	return 0;
+	IplImage *imageSeg=NULL,*imageNoiseRem =NULL;
+
+	found_TL.clear();
+	cvResize(frame,resize_TLR);
+
+	imageSeg = colorSegmentation(resize_TLR);
+#if ISDEBUG_TL
+	cvNamedWindow("imgseg");
+	cvShowImage("imgseg",imageSeg);
+	cvWaitKey(5);
+#endif
+	imageNoiseRem=noiseRemoval(imageSeg);
+	componentExtraction(imageSeg,resize_TLR,a,found_TL);
+	cvNamedWindow("TL");
+	cvShowImage("TL",resize_TLR);
+	cvWaitKey(5);
+
+	cvReleaseImage(&imageSeg);
+	cvReleaseImage(&imageNoiseRem);
+	cvReleaseImage(&frame);
+}
+
+void TSRecognitionPerFrame(IplImage *frame)
+{
+	float send=0;
+	Mat src(frame);
+	Mat re_src;
+	resize(src,re_src,Size(640,480));
+
+	Mat ihls_image = convert_rgb_to_ihls(re_src);
+	//分别对黄蓝红颜色检测
+	for (int mode=0;mode<3;mode++)
+	{
+
+		Mat nhs_image = convert_ihls_to_nhs(ihls_image,mode);//0:yellow,1:blue,2:red
+		Mat noiseremove;
+		//分别显示黄蓝红色的nhs二值图像 
+		stringstream ss;
+		string index;
+		ss<<mode;
+		ss>>index;
+		string tmp="nhs_image"+index;
+		//滤波
+		medianBlur(nhs_image,noiseremove,3);
+
+#if ISDEBUG_TS
+		imshow(tmp,noiseremove);
+		waitKey(2);
+#endif
+		//shape recognition
+		Mat p2=ShapeRecognize(noiseremove,found_TSR);
+		if(found_TSR.size()==0){
+			send=0;
+		}
+		for (int i=0;i<found_TSR.size();i++)
+		{
+			Point leftup(found_TSR[i].x,found_TSR[i].y);
+			Point rightdown(found_TSR[i].x+found_TSR[i].width,found_TSR[i].y+found_TSR[i].height);
+			rectangle(re_src,leftup,rightdown,colorMode[mode],2);
+			Mat recognizeMat=re_src(found_TSR[i]);//cut the traffic signs
+
+			//for different color, set different neural network
+			if(mode==0)//yellow
+			{
+				int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
+				//set the recognition result to the image
+				switch(result)
+				{
+				case 1:
+					setLabel(re_src,"plus",found_TSR[i]);
+					send=1.0;
+					break;
+				case 2:
+					setLabel(re_src,"man",found_TSR[i]);
+					send=2.0;break;
+				case 3:
+					setLabel(re_src,"slow",found_TSR[i]);
+					send=3.0;break;
+				default:
+					break;
+				}
+			}
+			else if(mode==1)//blue
+			{
+				int result=Recognize(nnetwork_RoundBlue,pca_RoundBlue,recognizeMat,ROUNDBLUE_CLASSES);
+				//set the recognition result to the image
+				switch(result)
+				{
+				case 1:
+					setLabel(re_src,"car",found_TSR[i]);
+					send=4.0;break;
+				case 2:
+					setLabel(re_src,"bike",found_TSR[i]);
+					send=5.0;break;
+				default:
+					break;
+				}
+			}
+
+			else{
+				int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
+				//set the recognition result to the image
+				switch(result)
+				{
+				case 1:
+					setLabel(re_src,"NoSound",found_TSR[i]);
+					send=6.0;break;
+				case 2:
+					setLabel(re_src,"30",found_TSR[i]);
+					send=7.0;break;
+				default:
+					break;
+				}
+			}
+
+		}
+		namedWindow("TSR");
+		imshow("TSR",re_src);
+		waitKey(5);
+		found_TSR.clear();//必须清楚当前颜色的框，不然下一种颜色的框的起始位置就不是0了
+
+	}
+
 }
 
 DWORD WINAPI TL_FRAME(LPVOID lpParamter)
@@ -192,7 +314,7 @@ DWORD WINAPI TL_FRAME(LPVOID lpParamter)
 	cout<<"Thread captured"<<endl;
 	IplImage *imageSeg=NULL,*imageNoiseRem =NULL;
 
-	found_filtered.clear();
+	found_TL.clear();
 	cvResize(frame,resize_TLR);
 
 	imageSeg = colorSegmentation(resize_TLR);
@@ -202,7 +324,7 @@ DWORD WINAPI TL_FRAME(LPVOID lpParamter)
 	cvWaitKey(5);
 #endif
 	imageNoiseRem=noiseRemoval(imageSeg);
-	componentExtraction(imageSeg,resize_TLR,a,found_filtered);
+	componentExtraction(imageSeg,resize_TLR,a,found_TL);
 	cvNamedWindow("resize_frame");
 	cvShowImage("resize_frame",resize_TLR);
 	cvWaitKey(5);
@@ -212,15 +334,13 @@ DWORD WINAPI TL_FRAME(LPVOID lpParamter)
 	cvReleaseImage(&frame);
 	return 0;
 }
+
 int main()
 {
 	//socket
 	SocketInit();
-	g_mat = cvCreateMat(2, 1, CV_32FC1);//用于传输数据
+	g_mat = cvCreateMat(2, 1, CV_32FC1);//transmit data
 	
-	//BP neural network
-	CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue;
-	PCA pca,pca_RoundRim,pca_RoundBlue;
 	loadPCA("pcaTriangle.yml", pca);
 	loadPCA("pcaRoundRim.yml", pca_RoundRim);
 	loadPCA("pcaRoundBlue.yml", pca_RoundBlue);
@@ -236,7 +356,6 @@ int main()
 	//BP neural network training
 	if(isTrain)
 	{
-		//神经网络的训练工作
 		//triangle
 		String path="D:\\JY\\JY_TrainingSamples\\TrafficSign\\triangle";
 		int triangleNum=readdata(path,TRIANGLE_CLASSES,"triangle.txt");
@@ -266,16 +385,12 @@ int main()
 		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
 	}
 	
-    //create thread to handle TL detection	
-	//HANDLE hThread = CreateThread(NULL,0,TRAFFICLIGHT,NULL,0,NULL);
-	//	CloseHandle(hThread);
-
 	//test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
 	//testCamera(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
 	//cameraMultiThread();
-	//cvNamedWindow("TL");
-	videoMultiThread();
+	//videoMultiThread();
 	//TLDetection();
+	openMP_MultiThreadVideo();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -287,7 +402,7 @@ void TLDetection()
 	IplImage *resize_tmp=cvCreateImage(Size(800,600),8,3);
 	CvCapture *capture=NULL;
 	CvVideoWriter *writer=NULL;
-	//vector<Rect> found_filtered;
+	vector<Rect> found_filtered;
 	//int a[2]={0,0};
 
 	capture = cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
@@ -477,6 +592,51 @@ void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP
 	}	
 }
 
+void openMP_MultiThreadVideo()
+{
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
+	IplImage * frame,*copyFrame;
+	while(1)
+	{
+		int start=cvGetTickCount();
+		frame=cvQueryFrame(cap);
+		if(!frame)break;
+		//MultiThread
+		cvNamedWindow("TL");
+		namedWindow("TSR");
+#if ISDEBUG_TL
+		cvNamedWindow("imgseg");
+#endif
+		//copyFrame=cvCloneImage(frame);
+		copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
+		cvCopy(frame,copyFrame);
+
+#pragma omp parallel sections
+		{
+#pragma omp section
+			{
+				//TSR 
+				TSRecognitionPerFrame(frame);
+			}
+
+#pragma omp section
+			{
+				//TL detection
+				TLDetectionPerFrame(copyFrame);
+			}
+		}
+
+		char c=waitKey(5);
+		if (c==27)break;
+
+		int end=cvGetTickCount();
+		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
+		cout<<"时间："<<time<<endl;
+	}
+	cvReleaseCapture(&cap);
+	cvDestroyAllWindows();
+}
+
 
 void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue)
@@ -622,128 +782,3 @@ void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwor
 
 
 }
-
-
-void cameraMultiThread()
-{
-	Drogonfly_ImgRead p;
-	p.Camera_Intial();
-	IplImage* frame;
-	IplImage *resize_tmp=cvCreateImage(Size(800,600),8,3);
-	CvVideoWriter *writer=NULL;
-
-
-#if SAVEVIDEO
-	writer = cvCreateVideoWriter("trafficSign7.avi",CV_FOURCC('X','V','I','D'),10,Size(800,600),1);
-#endif 
-
-	
-	hMutex = CreateMutex(NULL, FALSE, "IMG");  
-	while(1)
-	{
-		WaitForSingleObject(hMutex,INFINITE);
-		frame=p.Camera2IplImage();
-		cvResize(frame,resize_tmp);
-		cvShowImage("camera",resize_tmp);
-		cvWaitKey(5);
-
-#if SAVEVIDEO
-		cvWriteFrame(writer,resize_tmp); 
-#endif
-		//TLR and TSR
-		//create thread to handle TL detection	
-		HANDLE hThread = CreateThread(NULL,0,TL_FRAME,frame,0,NULL);
-		CloseHandle(hThread);
-
-
-		//如果退出，做相关的清除工作
-		int c=cvWaitKey(1);
-		if (c==27)
-		{
-			p.ClearBuffer();
-#if SAVEVIDEO
-			cvReleaseVideoWriter(&writer); 
-#endif
-			break;
-		}
-		ReleaseMutex(hMutex);  //释放线程锁
-	}
-}
-
-void videoMultiThread()
-{
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
-	IplImage * frame,*copyFrame;
-	while(1)
-	{
-		//WaitForSingleObject(hMutex,INFINITE);
-		cout<<"In main thread"<<endl;
-		frame=cvQueryFrame(cap);
-		if(!frame)break;
-		cvShowImage( "frame",frame); 
-		cout<<"main thread captured"<<endl;
-		//MultiThread
-		cvNamedWindow("TL");
-		cvNamedWindow("resize_frame");
-#if ISDEBUG_TL
-		cvNamedWindow("imgseg");
-#endif
-		//copyFrame=cvCloneImage(frame);
-		copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
-		cvCopy(frame,copyFrame);
-		HANDLE hThread = CreateThread(NULL,0,TL_FRAME,copyFrame,0,NULL);
-		CloseHandle(hThread);
-
-		char c=waitKey(5);
-		if (c==27)break;
-	}
-
-	cvReleaseCapture(&cap);
-	cvDestroyAllWindows();
-}
-
-
-/*
-void testAccuracy(String path,int num_folder)
-{
-	String img_num,txt_path,folder,img_path;
-	stringstream SS_folder;
-	Mat img;
-	vector<float> pixelVector;
-	int sampleNum=0;
-	float precision=0;
-	//folder ID loop
-	int Right=0;
-	for(int j=1;j<=num_folder;j++)
-	{
-
-		//get the folder name
-		SS_folder.clear();//注意清空，不然之前的值不会被覆盖掉
-		SS_folder<<j;
-		SS_folder>>folder;
-		txt_path=path+"\\"+folder+"\\description.txt";
-		ifstream txt(txt_path);
-		if (!txt)
-		{
-			cout<<"can't open the txt file!"<<endl;
-			exit(1);
-		}
-
-		while(getline(txt,img_path))
-		{
-			sampleNum++;
-			cout<<"num="<<sampleNum<<endl;
-			//read image
-			img=imread(img_path);
-			int result=Recognize("xmlTriangle.xml","pcaTriangle.yml",img);
-			if (result==j)
-				Right++;
-		}
-
-	}
-
-	precision=(float)(Right)/(float)(sampleNum);
-	
-	cout<<"precision="<<precision<<endl;
-	
-}*/
