@@ -13,7 +13,7 @@ void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwor
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
 void TLDetection();
 void cameraMultiThread();
-
+void videoMultiThread();
 
 void covertImg2HOG(Mat img,vector<float> &descriptors)
 {
@@ -173,7 +173,8 @@ IplImage *resize_TLR=cvCreateImage(Size(800,600),8,3);
 IplImage *resize_TSR=cvCreateImage(Size(800,600),8,3);
 //lock of thread
 HANDLE hMutex;   
-
+int a[2]={0,0};
+vector<Rect> found_filtered;
 
 DWORD WINAPI TRAFFICLIGHT(LPVOID lpParamter)
 {
@@ -183,23 +184,32 @@ DWORD WINAPI TRAFFICLIGHT(LPVOID lpParamter)
 
 DWORD WINAPI TL_FRAME(LPVOID lpParamter)
 {
-	WaitForSingleObject(hMutex,INFINITE);
+	cout<<"In the thread"<<endl;
 	IplImage* frame=(IplImage*)lpParamter;
+	cvNamedWindow("TL");
+	cvShowImage("TL",frame);
+	cvWaitKey(5);
+	cout<<"Thread captured"<<endl;
 	IplImage *imageSeg=NULL,*imageNoiseRem =NULL;
 
-	//found_filtered.clear();
+	found_filtered.clear();
 	cvResize(frame,resize_TLR);
 
-	//imageSeg = colorSegmentation(resize_TLR);
+	imageSeg = colorSegmentation(resize_TLR);
 #if ISDEBUG_TL
+	cvNamedWindow("imgseg");
 	cvShowImage("imgseg",imageSeg);
 	cvWaitKey(5);
 #endif
-	//imageNoiseRem=noiseRemoval(imageSeg);
-	//componentExtraction(imageSeg,resize_TLR,a);
+	imageNoiseRem=noiseRemoval(imageSeg);
+	componentExtraction(imageSeg,resize_TLR,a,found_filtered);
+	cvNamedWindow("resize_frame");
 	cvShowImage("resize_frame",resize_TLR);
 	cvWaitKey(5);
-	ReleaseMutex(hMutex);
+
+	cvReleaseImage(&imageSeg);
+	cvReleaseImage(&imageNoiseRem);
+	cvReleaseImage(&frame);
 	return 0;
 }
 int main()
@@ -222,7 +232,7 @@ int main()
 		hogSVMTrainTL(myHOG_horz,TRAIN,HORZ);
 	else
 		hogSVMTrainTL(myHOG_vertical,TRAIN,HORZ);
-    
+
 	//BP neural network training
 	if(isTrain)
 	{
@@ -262,7 +272,10 @@ int main()
 
 	//test_RBYcolor_Video(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
 	//testCamera(pca,pca_RoundRim,pca_RoundBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
-	cameraMultiThread();
+	//cameraMultiThread();
+	//cvNamedWindow("TL");
+	videoMultiThread();
+	//TLDetection();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -274,8 +287,8 @@ void TLDetection()
 	IplImage *resize_tmp=cvCreateImage(Size(800,600),8,3);
 	CvCapture *capture=NULL;
 	CvVideoWriter *writer=NULL;
-	vector<Rect> found_filtered;
-	int a[2]={0,0};
+	//vector<Rect> found_filtered;
+	//int a[2]={0,0};
 
 	capture = cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
 	int frameFPS=cvGetCaptureProperty(capture,CV_CAP_PROP_FPS);
@@ -622,7 +635,7 @@ void cameraMultiThread()
 
 #if SAVEVIDEO
 	writer = cvCreateVideoWriter("trafficSign7.avi",CV_FOURCC('X','V','I','D'),10,Size(800,600),1);
-#endif
+#endif 
 
 	
 	hMutex = CreateMutex(NULL, FALSE, "IMG");  
@@ -655,6 +668,38 @@ void cameraMultiThread()
 		}
 		ReleaseMutex(hMutex);  // Õ∑≈œﬂ≥ÃÀ¯
 	}
+}
+
+void videoMultiThread()
+{
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
+	IplImage * frame,*copyFrame;
+	while(1)
+	{
+		//WaitForSingleObject(hMutex,INFINITE);
+		cout<<"In main thread"<<endl;
+		frame=cvQueryFrame(cap);
+		if(!frame)break;
+		cvShowImage( "frame",frame); 
+		cout<<"main thread captured"<<endl;
+		//MultiThread
+		cvNamedWindow("TL");
+		cvNamedWindow("resize_frame");
+#if ISDEBUG_TL
+		cvNamedWindow("imgseg");
+#endif
+		//copyFrame=cvCloneImage(frame);
+		copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
+		cvCopy(frame,copyFrame);
+		HANDLE hThread = CreateThread(NULL,0,TL_FRAME,copyFrame,0,NULL);
+		CloseHandle(hThread);
+
+		char c=waitKey(5);
+		if (c==27)break;
+	}
+
+	cvReleaseCapture(&cap);
+	cvDestroyAllWindows();
 }
 
 
