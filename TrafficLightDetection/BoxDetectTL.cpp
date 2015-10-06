@@ -26,9 +26,9 @@ bool BoxDetectTL(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered,
 
 
  
-
+  /*
   //画矩形框，因为hog_vertical检测出的矩形框比实际人体框要稍微大些,所以这里需要做一些调整
- /* for(int i=0; i<found_filtered.size(); i++)
+  for(int i=0; i<found_filtered.size(); i++)
   {
     Rect r = found_filtered[i];
 

@@ -14,8 +14,8 @@
 #define IMG_NEW_DIM     40
 #define RESIZED_IMG_DIM     1764
 //number of classes
-#define TRIANGLE_CLASSES 3
-#define ROUNDRIM_CLASSES 2
+#define TRIANGLE_CLASSES 4
+#define ROUNDRIM_CLASSES 3
 #define ROUNDBLUE_CLASSES 2
 
 

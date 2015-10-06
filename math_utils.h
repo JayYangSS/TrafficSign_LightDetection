@@ -33,6 +33,11 @@
 #define Y_HUE_MIN 18
 #define Y_SAT_MIN 30
 
+//define the four level for different color
+#define R_VALUE 80
+#define B_VALUE 160
+#define Y_VALUE 255
+
 /**
  * Return the greatest value of three passed arguments.
  *
@@ -55,6 +60,6 @@ float	retrieve_theta(unsigned int r, unsigned int g, unsigned int b);
 float	retrieve_normalised_hue(unsigned int r, unsigned int g, unsigned int b);
 Mat convert_rgb_to_ihls(Mat rgb_image);
 Mat	convert_ihls_to_nhs(Mat ihls_image, int colour = 0, int hue_max = R_HUE_MAX,int hue_min = R_HUE_MIN, int sat_min = R_SAT_MIN);
-
+Mat	convert_ihls_to_seg(Mat ihls_image, int hue_max = R_HUE_MAX,int hue_min = R_HUE_MIN, int sat_min = R_SAT_MIN);
 
 #endif /* MATH_UTILS_H_ */

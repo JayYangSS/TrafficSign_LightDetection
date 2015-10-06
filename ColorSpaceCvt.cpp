@@ -191,3 +191,41 @@ Mat	convert_ihls_to_nhs(Mat ihls_image, int colour, int hue_max, int hue_min,int
 
 	return nhs_image;
 }
+
+
+Mat	convert_ihls_to_seg(Mat ihls_image, int hue_max, int hue_min,int sat_min)
+{
+	
+	//static int maxH=0;
+	//static int minH=255,minS=255;
+	assert(ihls_image.channels() == 3);
+
+	Mat nhs_image(ihls_image.rows, ihls_image.cols, CV_8UC1);
+
+	// I put the if before for loops, to make the process faster.
+	// Otherwise for each pixel it had to check this condition.
+	// Nicer implementation could be to separate these two for loops in
+	// two different functions, one for red and one for blue.
+		for (int i = 0; i < ihls_image.rows; ++i)
+		{
+			const uchar *ihls_data = ihls_image.ptr<uchar> (i);
+			uchar *nhs_data = nhs_image.ptr<uchar> (i);
+			for (int j = 0; j < ihls_image.cols; ++j)
+			{
+				uchar s = *ihls_data++;
+				uchar l = *ihls_data++;
+				uchar h = *ihls_data++;
+
+				if ((h < B_HUE_MAX && h > B_HUE_MIN) && s > B_SAT_MIN)
+					*nhs_data++=B_VALUE;
+				else if( (h < R_HUE_MAX || h > R_HUE_MIN) && s > R_SAT_MIN)
+					*nhs_data++=R_VALUE;
+				else if((h < Y_HUE_MAX && h > Y_HUE_MIN) && s > Y_SAT_MIN)
+					*nhs_data++=Y_VALUE;
+				else
+					*nhs_data++=0;
+			}
+		}
+
+	return nhs_image;
+}

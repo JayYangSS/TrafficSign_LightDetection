@@ -34,7 +34,7 @@
 #define HORZ_HardExampleNO 23
 
 void rgb2hsi(int red, int green, int blue, int& hue, int& saturation, int& intensity );
-void componentExtraction(IplImage* inputImage, IplImage* srcImage,int* p,vector<Rect> &found_filtered);
+void componentExtraction(IplImage* inputImage, IplImage* srcImage,float* TLDSend,vector<Rect> &found_filtered);
 void hogSVMTrainTL(HOGDescriptor &myHOG,bool TRAIN,bool HORZ);
 IplImage* HSV_view(IplImage* inputImage,int flagHSV);
 IplImage* colorSegmentationTL(IplImage* inputImage);

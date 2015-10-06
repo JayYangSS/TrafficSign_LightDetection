@@ -14,7 +14,6 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	 const int grayThresholding = 80;//70
 	 const int bgrThresholding =120;
 	 const int whiteThresholding = 220;
-	 //
 	 const int numThresholding =  70;//80
 
 	 int iRectangleWidth;
@@ -78,63 +77,20 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 			bgrMax = max(max(bValue,gValue),rValue);
 			bgrMin = min(min(bValue,gValue),rValue);
 			if((gray<=grayThresholding))
-				//|| bgrMax <= bgrThresholding 
-				//&&  bgrMax-bgrMin<=20
-				
 				sum++;
-			//if( gray>=whiteThresholding  )
-				//white++;
 		}
 	}	
 
-	//if(((iRectangleWidth+1)*(iRectangleHeight*2/3+1)-white)<=0)
-		//return returnStatus;
 
 	int ratio = sum*100/((iRectangleWidth+1)*(iRectangleHeight*2/3+1));//矩形框中黑色像素所占比例
-	//printf("%d,%d\n",iRect.x,iRect.y);
-	//printf("ratio:%d\n",ratio);
 
 	if(ratio>=numThresholding)
 		returnStatus = true;
 
-
 	//若检测出的矩形框符合条件，则在原始图像上画出矩形标示框
-	if(returnStatus==true){
-#if 0
-		if(iColor==GREEN_PIXEL_LABEL)
-			cvRectangle(
-				srcImage,
-				cvPoint(iRectangleStartX-2,iRectangleStartY-2),
-				cvPoint(iRectangleEndX+2,iRectangleEndY+2),
-				cvScalar(0,255,0),
-				2
-				);
-
-		else if(iColor==RED_PIXEL_LABEL)
-			cvRectangle(
-				srcImage,
-				cvPoint(iRectangleStartX,iRectangleStartY),
-				cvPoint(iRectangleEndX,iRectangleEndY),
-				cvScalar(0,0,255),
-				2
-			);
-#endif
-
-#if 0
-	CvScalar tmpScalar;
-	if (iDrawRectY1<100)
+	if(returnStatus==true)
 	{
-		tmpScalar=cvScalar(0,255,255);
-		iDrawRectY1-=iDrawRectHeight/3;
-		iDrawRectY2-=iDrawRectHeight/3;
-	} 
-	else
-	{
-		tmpScalar=cvScalar(0,0,255);
-	}
-#endif
-
-#if 1//在原始图像上画出矩形标示框
+	    //在原始图像上画出矩形标示框
 		if(iDrawRectX1<0)
 			iDrawRectX1=0;
 		if(iDrawRectY1<0)
@@ -143,30 +99,18 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 			iDrawRectX2=iWidth-1;
 		if(iDrawRectY2>=iHeight)
 			iDrawRectY2=iHeight-1;
+
 		if(iColor==GREEN_PIXEL_LABEL)
-		{cvRectangle(
-			srcImage,
-			cvPoint(iDrawRectX1,iDrawRectY1),
-			cvPoint(iDrawRectX2,iDrawRectY2),
-			cvScalar(0,255,0),
-			2
-			);
-		*p2=*p2+1;
+		{
+			cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,255,0),2);
+			*p2=*p2+1;
 		}
 
 		else if(iColor==RED_PIXEL_LABEL)
-		{cvRectangle(
-			srcImage,
-			cvPoint(iDrawRectX1,iDrawRectY1),
-			cvPoint(iDrawRectX2,iDrawRectY2),
-			cvScalar(0,0,255),
-			//tmpScalar,
-			2
-			);
-         *p1=*p1+1;
+		{
+			cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,0,255),2);
+			*p1=*p1+1;
 		}
-#endif
 	}
-
 	 return returnStatus;
 }

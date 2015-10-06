@@ -5,6 +5,32 @@
 #include "Drogonfly_ImgRead.h"
 #include "TrafficLightDetection/std_tlr.h"
 #include <Windows.h>
+#include <queue>
+
+
+//TL HOG descriptors
+Size Win_vertical(15,30),block_vertical(5,10),blockStride_vertical(5,5),cell_vertical(5,5);
+HOGDescriptor myHOG_vertical(Win_vertical,block_vertical,blockStride_vertical,cell_vertical,9,1,-1.0,0,0.2,true,64);
+HOGDescriptor myHOG_horz(Size(36,12),Size(12,6),Size(6,6),Size(6,6),9,1,-1.0,0,0.2,true,64);
+int Frame_pos;//当前帧位置
+
+//control TSR_flag
+bool isTrain=false;//traffic signs
+bool TRAIN=false;//TL
+bool HORZ=false;//TL
+bool saveFlag=true;
+IplImage *resize_TLR=cvCreateImage(Size(800,600),8,3);
+
+vector<Rect> found_TL;//the bounding box for traffic lights
+vector<Rect> found_TSR;//the bounding box for traffic signs
+Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};//the color mode for the traffic sign detection(Y,B,R)
+CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue;//neural networks for three different kinds of traffic signs 
+PCA pca,pca_RoundRim,pca_RoundBlue;
+deque<float> signFilters[7];
+deque<float> TLFilters[2];
+bool TSR_flag[7]={false,false,false,false,false,false,false};//Traffic sign control flag
+bool TLD_flag[2]={false,false};//traffic lighs control flags
+
 
 //test function
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
@@ -14,6 +40,95 @@ void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwor
 void TLDetection();
 void cameraMultiThread();
 void videoMultiThread();
+void test_RBYcolorMerge_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
+	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
+void openMP_MultiThreadVideo();
+
+
+Point2d getBoxCenter(Rect &boundingBox){
+	Point2d centerPoint;
+	centerPoint.x=boundingBox.x+boundingBox.width/2;
+	centerPoint.y=boundingBox.y+boundingBox.height/2;
+	return centerPoint;
+}
+
+void getCentersFromBoxes(vector<Rect> &boundingBoxs,vector<Point2d> &centers)
+{
+	for(int i=0;i<boundingBoxs.size();i++)
+	{
+		Point2d center=getBoxCenter(boundingBoxs[i]);
+		centers.push_back(center);
+	}
+}
+
+Rect getSearchRegion(Point2d center,Size windowSize,Size imageSize)
+{
+	Rect searchRegion;
+	int imgWidth=imageSize.width;
+	int imgHeight=imageSize.height;
+	int windowWidth=windowSize.width;
+	int windowHeight=windowSize.height;
+	//横坐标
+	if(center.x-windowWidth/2<0)
+	{
+		searchRegion.x=0;
+		searchRegion.width=windowWidth/2+(int)(center.x);
+	}
+	else if(center.x+windowWidth/2>imgWidth)
+	{
+		searchRegion.x=center.x-windowWidth/2;
+		searchRegion.width=windowWidth/2+imgWidth-center.x;
+	}
+	else
+	{
+		searchRegion.x=center.x-windowWidth/2;
+		searchRegion.width=windowWidth;
+	}
+	//纵坐标
+	if(center.y-windowHeight/2<0)
+	{
+		searchRegion.y=0;
+		searchRegion.height=windowHeight/2+(int)(center.y);
+	}
+	else if(center.y+windowHeight/2>imgHeight)
+	{
+		searchRegion.y=center.y-windowHeight/2;
+		searchRegion.height=windowHeight/2+imgHeight-center.y;
+	}
+	else
+	{
+		searchRegion.y=center.y-windowHeight/2;
+		searchRegion.height=windowHeight;
+	}
+	return searchRegion;
+}
+
+bool isContainSigns(Mat img,Rect searchRegion,float thresholdRatio)
+{
+	Mat searchMat=img(searchRegion);//cut the traffic signs
+	int count=0;
+	//visit every pixel
+	int nRows=searchMat.rows;
+	int nCols=searchMat.cols;
+	if (searchMat.isContinuous())
+	{
+		nCols *= nRows;  
+		nRows = 1;
+	}
+
+	for(int i=0;i<nRows;i++)
+	{
+		uchar* p=searchMat.ptr<uchar>(i);
+		for(int j=0;j<nCols;j++)
+		{
+			if(p[j]==255)
+				count++;
+		}
+	}
+	if(count>thresholdRatio*nRows*nCols)
+		return true;
+	return false;
+}
 
 void covertImg2HOG(Mat img,vector<float> &descriptors)
 {
@@ -22,6 +137,8 @@ void covertImg2HOG(Mat img,vector<float> &descriptors)
 
 	cout<<"HOG特征子维数："<<descriptors.size()<<endl;
 }
+
+//get the HOG features(float array) of each image in the specified folder
 int readdata(String path,int num_folder,String outputfile)
 {
 	fstream dataSet(outputfile.c_str(),ios::out);
@@ -71,6 +188,7 @@ int readdata(String path,int num_folder,String outputfile)
 	dataSet.close();
 	return sampleNum;
 }
+
 void shuffleDataSet(string path,string outputfile)
 {
 	// raw dataset file  8729(rows) * 4800(cols)  not yet shuffle  
@@ -155,43 +273,23 @@ void savePCA(string filepath,string outputPath)
 	pcaFile.release();
 	fs.release();
 }
-void openMP_MultiThreadVideo();
-//TL HOG descriptors
-Size Win_vertical(15,30),block_vertical(5,10),blockStride_vertical(5,5),cell_vertical(5,5);
-HOGDescriptor myHOG_vertical(Win_vertical,block_vertical,blockStride_vertical,cell_vertical,9,1,-1.0,0,0.2,true,64);
-HOGDescriptor myHOG_horz(Size(36,12),Size(12,6),Size(6,6),Size(6,6),9,1,-1.0,0,0.2,true,64);
-int Frame_pos;//当前帧位置
-
-//control flag
-bool isTrain=false;//traffic signs
-bool TRAIN=false;//TL
-bool HORZ=false;//TL
-bool saveFlag=true;
-IplImage *resize_TLR=cvCreateImage(Size(800,600),8,3);
-IplImage *resize_TSR=cvCreateImage(Size(800,600),8,3); 
-int a[2]={0,0};//detection result
-vector<Rect> found_TL;//the bounding box for traffic lights
-vector<Rect> found_TSR;//the bounding box for traffic signs
-Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};//the color mode for the traffic sign detection
-CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue;//neural networks for three different kinds of traffic signs 
-PCA pca,pca_RoundRim,pca_RoundBlue;
 
 
-void TLDetectionPerFrame(IplImage *frame)
+void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 {
 	IplImage *imageSeg=NULL,*imageNoiseRem =NULL;
 
 	found_TL.clear();
 	cvResize(frame,resize_TLR);
 
-	imageSeg = colorSegmentation(resize_TLR);
+	imageSeg = colorSegmentationTL(resize_TLR);
 #if ISDEBUG_TL
 	cvNamedWindow("imgseg");
 	cvShowImage("imgseg",imageSeg);
 	cvWaitKey(5);
 #endif
 	imageNoiseRem=noiseRemoval(imageSeg);
-	componentExtraction(imageSeg,resize_TLR,a,found_TL);
+	componentExtraction(imageSeg,resize_TLR,TLDSend,found_TL);
 	cvNamedWindow("TL");
 	cvShowImage("TL",resize_TLR);
 	cvWaitKey(5);
@@ -201,138 +299,317 @@ void TLDetectionPerFrame(IplImage *frame)
 	cvReleaseImage(&frame);
 }
 
-void TSRecognitionPerFrame(IplImage *frame)
+void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 {
-	float send=0;
+	vector<ShapeRecResult> shapeResult;
 	Mat src(frame);
 	Mat re_src;
 	resize(src,re_src,Size(640,480));
-
-	Mat ihls_image = convert_rgb_to_ihls(re_src);
-	//分别对黄蓝红颜色检测
-	for (int mode=0;mode<3;mode++)
-	{
-
-		Mat nhs_image = convert_ihls_to_nhs(ihls_image,mode);//0:yellow,1:blue,2:red
-		Mat noiseremove;
-		//分别显示黄蓝红色的nhs二值图像 
-		stringstream ss;
-		string index;
-		ss<<mode;
-		ss>>index;
-		string tmp="nhs_image"+index;
-		//滤波
-		medianBlur(nhs_image,noiseremove,3);
+	Mat bilateralImg;
+	bilateralFilter(re_src,bilateralImg,7,7*2,7/2);
+	int count=0;
+#if ISDEBUG_TS
+	namedWindow("bilateralImg");
+	imshow("bilateralImg",bilateralImg);
+	waitKey(5);
+#endif
+	Mat ihls_image = convert_rgb_to_ihls(bilateralImg);
+	Mat nhs_image=convert_ihls_to_seg(ihls_image);
 
 #if ISDEBUG_TS
-		imshow(tmp,noiseremove);
-		waitKey(2);
+	namedWindow("seg");
+	imshow("seg",nhs_image);
+	waitKey(5);
 #endif
-		//shape recognition
-		Mat p2=ShapeRecognize(noiseremove,found_TSR);
-		if(found_TSR.size()==0){
-			send=0;
-		}
-		for (int i=0;i<found_TSR.size();i++)
+
+	Mat noiseremove;
+	int erosion_size=1;
+	int eroionType=MORPH_CROSS;
+	Mat element = getStructuringElement( eroionType,Size( 2*erosion_size + 1, 2*erosion_size+1 ),Point( erosion_size, erosion_size ) );
+	erode( nhs_image, noiseremove, element);
+#if ISDEBUG_TS
+	namedWindow("morph");
+	imshow("morph",noiseremove);
+	waitKey(2);
+#endif
+	Mat labeledImg=ShapeRecognize(noiseremove,shapeResult);
+
+#if ISDEBUG_TS
+	namedWindow("labeledImg");
+	imshow("labeledImg",labeledImg);
+	waitKey(5);
+#endif
+	for (int i=0;i<shapeResult.size();i++)
+	{
+		Rect boundingBox=shapeResult[i].box;
+		Point leftup(boundingBox.x,boundingBox.y);
+		Point rightdown(boundingBox.x+boundingBox.width,boundingBox.y+boundingBox.height);
+	//	rectangle(re_src,leftup,rightdown,colorMode[2],2);
+		Mat recognizeMat=re_src(boundingBox);//cut the traffic signs
+		//int count=0;
+		deque<float>::iterator it;
+
+		//for different color, set different neural network
+		if(shapeResult[i].shape==TRIANGLE&&shapeResult[i].color==Y_VALUE)//yellow
 		{
-			Point leftup(found_TSR[i].x,found_TSR[i].y);
-			Point rightdown(found_TSR[i].x+found_TSR[i].width,found_TSR[i].y+found_TSR[i].height);
-			rectangle(re_src,leftup,rightdown,colorMode[mode],2);
-			Mat recognizeMat=re_src(found_TSR[i]);//cut the traffic signs
-
-			//for different color, set different neural network
-			if(mode==0)//yellow
+			rectangle(re_src,leftup,rightdown,colorMode[0],2);
+			int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
+			//set the recognition result to the image
+			switch(result)
 			{
-				int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
-				//set the recognition result to the image
-				switch(result)
+			case 1:
+				setLabel(re_src,"plus",boundingBox);
+				//TSRSend[0]=1.0;break;
+				signFilters[0].push_back(1.0);
+				if (signFilters[0].size()>5)
+					signFilters[0].pop_front();
+				TSR_flag[0]=true;
+				it=signFilters[0].begin();
+				while (it<signFilters[0].end())
 				{
-				case 1:
-					setLabel(re_src,"plus",found_TSR[i]);
-					send=1.0;
-					break;
-				case 2:
-					setLabel(re_src,"man",found_TSR[i]);
-					send=2.0;break;
-				case 3:
-					setLabel(re_src,"slow",found_TSR[i]);
-					send=3.0;break;
-				default:
-					break;
+					if(*it==1.0)count++;
+					it++;
 				}
-			}
-			else if(mode==1)//blue
-			{
-				int result=Recognize(nnetwork_RoundBlue,pca_RoundBlue,recognizeMat,ROUNDBLUE_CLASSES);
-				//set the recognition result to the image
-				switch(result)
+				if((float)(count)/(float)signFilters[0].size()>=0.4)
 				{
-				case 1:
-					setLabel(re_src,"car",found_TSR[i]);
-					send=4.0;break;
-				case 2:
-					setLabel(re_src,"bike",found_TSR[i]);
-					send=5.0;break;
-				default:
-					break;
+					TSRSend[0]=1.0;
+					//cout<<"detected"<<endl;
 				}
-			}
+				else
+				{
+					TSRSend[0]=0.0;
+					//cout<<"No detected"<<endl;
+				}
+				count=0;
+				break;	
 
-			else{
-				int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
-				//set the recognition result to the image
-				switch(result)
+			case 2:
+				setLabel(re_src,"man",boundingBox);
+				//TSRSend[1]=2.0;break;
+				signFilters[1].push_back(2.0);
+				if (signFilters[1].size()>5)
+					signFilters[1].pop_front();
+				TSR_flag[1]=true;
+				it=signFilters[1].begin();
+				while (it<signFilters[1].end())
 				{
-				case 1:
-					setLabel(re_src,"NoSound",found_TSR[i]);
-					send=6.0;break;
-				case 2:
-					setLabel(re_src,"30",found_TSR[i]);
-					send=7.0;break;
-				default:
-					break;
+					if(*it==2.0)count++;
+					it++;
 				}
-			}
+				if((float)(count)/(float)signFilters[1].size()>=0.4)
+				{
+					TSRSend[1]=2.0;
+					//cout<<"detected"<<endl;
+				}
+				else
+				{
+					TSRSend[1]=0.0;
+					//cout<<"No detected"<<endl;
+				}
+				count=0;
+				break;	
 
+			case 3:
+				setLabel(re_src,"slow",boundingBox);
+				//TSRSend[2]=3.0;break;
+				signFilters[2].push_back(3.0);
+				if (signFilters[2].size()>5)
+					signFilters[2].pop_front();
+				TSR_flag[2]=true;
+				it=signFilters[2].begin();
+				while (it<signFilters[2].end())
+				{
+					if(*it==3.0)count++;
+					it++;
+				}
+				if((float)(count)/(float)signFilters[2].size()>=0.4)
+				{
+					TSRSend[2]=3.0;
+					//cout<<"detected"<<endl;
+				}
+				else
+				{
+					TSRSend[2]=0.0;
+					//cout<<"No detected"<<endl;
+				}
+				count=0;
+				break;	
+			case 4:
+				setLabel(re_src,"work",boundingBox);
+				break;
+			default:
+				break;
+			}
 		}
-		namedWindow("TSR");
-		imshow("TSR",re_src);
-		waitKey(5);
-		found_TSR.clear();//必须清楚当前颜色的框，不然下一种颜色的框的起始位置就不是0了
+		else if(shapeResult[i].shape==CIRCLE&&shapeResult[i].color==B_VALUE)//circle
+		{
+			rectangle(re_src,leftup,rightdown,colorMode[1],2);
+			int result=Recognize(nnetwork_RoundBlue,pca_RoundBlue,recognizeMat,ROUNDBLUE_CLASSES);
+			//set the recognition result to the image
+			switch(result)
+			{
+			case 1:
+				setLabel(re_src,"car",boundingBox);
+				//TSRSend[3]=4.0;break;
+				signFilters[3].push_back(4.0);
+				if (signFilters[3].size()>5)
+					signFilters[3].pop_front();
+				TSR_flag[3]=true;
+				it=signFilters[3].begin();
+				while (it<signFilters[3].end())
+				{
+					if(*it==4.0)count++;
+					it++;
+				}
+				if((float)(count)/(float)signFilters[3].size()>=0.4)
+				{
+					TSRSend[3]=4.0;
+					//cout<<"detected"<<endl;
+				}
+				else
+				{
+					TSRSend[3]=0.0;
+					//cout<<"No detected"<<endl;
+				}
+				count=0;
+				break;	
+
+			case 2:
+				setLabel(re_src,"bike",boundingBox);
+				//TSRSend[4]=5.0;break;
+				signFilters[4].push_back(5.0);
+				if (signFilters[4].size()>5)
+					signFilters[4].pop_front();
+				TSR_flag[4]=true;
+				it=signFilters[4].begin();
+				while (it<signFilters[4].end())
+				{
+					if(*it==5.0)count++;
+					it++;
+				}
+				if((float)(count)/(float)signFilters[4].size()>=0.4)
+				{
+					TSRSend[4]=5.0;
+					//cout<<"detected"<<endl;
+				}
+				else
+				{
+					TSRSend[4]=0.0;
+					//cout<<"No detected"<<endl;
+				}
+				count=0;
+				break;	
+
+			default:
+				break;
+			}
+		}
+
+		else{
+			rectangle(re_src,leftup,rightdown,colorMode[2],2);
+			int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
+			//set the recognition result to the image
+
+			switch(result)
+			{
+			case 1:
+				setLabel(re_src,"NoSound",boundingBox);
+				//TSRSend[5]=6.0;break;
+				signFilters[5].push_back(6.0);
+				if (signFilters[5].size()>5)
+					signFilters[5].pop_front();
+				TSR_flag[5]=true;
+				it=signFilters[5].begin();
+				while (it<signFilters[5].end())
+				{
+					if(*it==6.0)count++;
+					it++;
+				}
+				if((float)(count)/(float)signFilters[5].size()>=0.4)
+				{
+					TSRSend[5]=6.0;
+					//cout<<"detected"<<endl;
+				}
+				else
+				{
+					TSRSend[5]=0.0;
+					//cout<<"No detected"<<endl;
+				}
+				count=0;
+				break;	
+
+			case 2:
+				setLabel(re_src,"30",boundingBox);
+				signFilters[6].push_back(7.0);
+				if (signFilters[6].size()>5)
+					signFilters[6].pop_front();
+				TSR_flag[6]=true;
+				it=signFilters[6].begin();
+				while (it<signFilters[6].end())
+				{
+					if(*it==7.0)count++;
+					it++;
+				}
+				if((float)(count)/(float)signFilters[6].size()>=0.4)
+				{
+					TSRSend[6]=7.0;
+					//cout<<"detected"<<endl;
+				}
+				else
+				{
+					TSRSend[6]=0.0;
+					//cout<<"No detected"<<endl;
+				}
+				count=0;
+				break;	
+				//TSRSend=7.0;break;
+			case 3:
+				setLabel(re_src,"stop",boundingBox);
+				break;
+			default:
+				break;
+			}
+		}
 
 	}
 
-}
+	for (int i=0;i<=6;i++)
+	{
+		if(!TSR_flag[i])
+		{
+			signFilters[i].push_back(0);
+			if (signFilters[i].size()>5)
+				signFilters[i].pop_front();
+		}
+		//cout<<TSRSend[i]<<" ";
 
-DWORD WINAPI TL_FRAME(LPVOID lpParamter)
-{
-	cout<<"In the thread"<<endl;
-	IplImage* frame=(IplImage*)lpParamter;
-	cvNamedWindow("TL");
-	cvShowImage("TL",frame);
-	cvWaitKey(5);
-	cout<<"Thread captured"<<endl;
-	IplImage *imageSeg=NULL,*imageNoiseRem =NULL;
 
-	found_TL.clear();
-	cvResize(frame,resize_TLR);
+		deque<float>::iterator it;
+		int containCount=0;//计算容器中有效检测结果数目
+		it=signFilters[i].begin();
+		while (it<signFilters[i].end())
+		{
+			if((*it)==(float)(i+1))
+				containCount++;
+			it++;
+		}
+		if((float)(containCount)/(float)signFilters[i].size()>=0.4)
+		{
+			TSRSend[i]=(float)(i+1);
+			//cout<<"detected"<<endl;
+		}
+		else
+		{
+			TSRSend[i]=0.0;
+			//cout<<"No detected"<<endl;
+		}
 
-	imageSeg = colorSegmentation(resize_TLR);
-#if ISDEBUG_TL
-	cvNamedWindow("imgseg");
-	cvShowImage("imgseg",imageSeg);
-	cvWaitKey(5);
-#endif
-	imageNoiseRem=noiseRemoval(imageSeg);
-	componentExtraction(imageSeg,resize_TLR,a,found_TL);
-	cvNamedWindow("resize_frame");
-	cvShowImage("resize_frame",resize_TLR);
-	cvWaitKey(5);
+	}
 
-	cvReleaseImage(&imageSeg);
-	cvReleaseImage(&imageNoiseRem);
-	cvReleaseImage(&frame);
-	return 0;
+	shapeResult.clear();
+	namedWindow("TSR");
+	imshow("TSR",re_src);
+	waitKey(5);
 }
 
 int main()
@@ -340,10 +617,6 @@ int main()
 	//socket
 	SocketInit();
 	g_mat = cvCreateMat(2, 1, CV_32FC1);//transmit data
-	
-	loadPCA("pcaTriangle.yml", pca);
-	loadPCA("pcaRoundRim.yml", pca_RoundRim);
-	loadPCA("pcaRoundBlue.yml", pca_RoundBlue);
 
 	//TL detection HOG descriptor
 	CvFont font; 
@@ -361,6 +634,7 @@ int main()
 		int triangleNum=readdata(path,TRIANGLE_CLASSES,"triangle.txt");
 		shuffleDataSet("triangle.txt","shuffleTriangle.yml");
 		savePCA("shuffleTriangle.yml","pcaTriangle.yml");
+		loadPCA("pcaTriangle.yml", pca);
 		NeuralNetTrain("shuffleTriangle.yml","xmlTriangle.xml",pca,triangleNum,TRIANGLE_CLASSES);
 		nnetwork.load("xmlTriangle.xml", "xmlTriangle");
 
@@ -369,6 +643,7 @@ int main()
 		int roundrimNum=readdata(path_RoundRim,ROUNDRIM_CLASSES,"RoundRim.txt");
 		shuffleDataSet("RoundRim.txt","shuffleRoundRim.yml");
 		savePCA("shuffleRoundRim.yml","pcaRoundRim.yml");
+		loadPCA("pcaRoundRim.yml", pca_RoundRim);
 		NeuralNetTrain("shuffleRoundRim.yml","xmlRoundRim.xml",pca_RoundRim,roundrimNum,ROUNDRIM_CLASSES);
 		nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
 
@@ -377,9 +652,13 @@ int main()
 		int roundblueNum=readdata(path_RoundBlue,ROUNDBLUE_CLASSES,"RoundBlue.txt");
 		shuffleDataSet("RoundBlue.txt","shuffleRoundBlue.yml");
 		savePCA("shuffleRoundBlue.yml","pcaRoundBlue.yml");
+		loadPCA("pcaRoundBlue.yml", pca_RoundBlue);
 		NeuralNetTrain("shuffleRoundBlue.yml","xmlRoundBlue.xml",pca_RoundBlue,roundblueNum,ROUNDBLUE_CLASSES);
 		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
 	}else{
+		loadPCA("pcaTriangle.yml", pca);
+		loadPCA("pcaRoundRim.yml", pca_RoundRim);
+		loadPCA("pcaRoundBlue.yml", pca_RoundBlue);
 		nnetwork.load("xmlTriangle.xml", "xmlTriangle");
 		nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
 		nnetwork_RoundBlue.load("xmlRoundBlue.xml", "xmlRoundBlue");
@@ -403,7 +682,7 @@ void TLDetection()
 	CvCapture *capture=NULL;
 	CvVideoWriter *writer=NULL;
 	vector<Rect> found_filtered;
-	//int a[2]={0,0};
+	float TLDSend[2]={0,0};
 
 	capture = cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
 	int frameFPS=cvGetCaptureProperty(capture,CV_CAP_PROP_FPS);
@@ -430,16 +709,16 @@ void TLDetection()
 		cvWaitKey(5);
 #endif
 		imageNoiseRem=noiseRemoval(imageSeg);
-		componentExtraction(imageSeg,resize_tmp,a,found_filtered);
+		componentExtraction(imageSeg,resize_tmp,TLDSend,found_filtered);
 
 
 		//socket
 		if (!gb_filled)
 		{
 			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();
-			if(a[0]>0)//red light
+			if(TLDSend[0]>0)//red light
 				*(float *)CV_MAT_ELEM_PTR(*g_mat, 1, 0) = 9.0;
-			if(a[1]>0)//greed light
+			if(TLDSend[1]>0)//greed light
 				*(float *)CV_MAT_ELEM_PTR(*g_mat, 1, 0) = 10.0;
 			gb_filled = true;
 		}
@@ -467,137 +746,18 @@ void TLDetection()
 }
 
 
-void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
-										  CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue)
-{
-	
-	float send=0;
-	VideoCapture capture; 
-	vector<Rect> boundingBox;
-	Mat src,re_src,thresh;
-	Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};
-
-	capture.open("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
-	while(capture.read(src))
-	{
-		int start=cvGetTickCount();
-		resize(src,re_src,Size(640,480));
-		
-		Mat ihls_image = convert_rgb_to_ihls(re_src);
-		//分别对黄蓝红颜色检测
-		for (int mode=0;mode<3;mode++)
-		{
-
-			Mat nhs_image = convert_ihls_to_nhs(ihls_image,mode);//0:yellow,1:blue,2:red
-			Mat noiseremove;
-			//分别显示黄蓝红色的nhs二值图像 
-			stringstream ss;
-			string index;
-			ss<<mode;
-			ss>>index;
-			string tmp="nhs_image"+index;
-			//滤波
-			medianBlur(nhs_image,noiseremove,3);
-
-#if ISDEBUG_TS
-			imshow(tmp,noiseremove);
-			waitKey(2);
-#endif
-			//shape recognition
-			Mat p2=ShapeRecognize(noiseremove,boundingBox);
-			if(boundingBox.size()==0){
-				send=0;
-			}
-			for (int i=0;i<boundingBox.size();i++)
-			{
-				Point leftup(boundingBox[i].x,boundingBox[i].y);
-				Point rightdown(boundingBox[i].x+boundingBox[i].width,boundingBox[i].y+boundingBox[i].height);
-				rectangle(re_src,leftup,rightdown,colorMode[mode],2);
-				Mat recognizeMat=re_src(boundingBox[i]);//cut the traffic signs
-
-				//for different color, set different neural network
-				if(mode==0)//yellow
-				{
-					int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
-					//set the recognition result to the image
-					switch(result)
-					{
-					case 1:
-						setLabel(re_src,"plus",boundingBox[i]);
-						send=1.0;
-						break;
-					case 2:
-						setLabel(re_src,"man",boundingBox[i]);
-						send=2.0;break;
-					case 3:
-						setLabel(re_src,"slow",boundingBox[i]);
-						send=3.0;break;
-					default:
-						break;
-					}
-				}
-				else if(mode==1)//blue
-				{
-					int result=Recognize(nnetwork_RoundBlue,pca_RoundBlue,recognizeMat,ROUNDBLUE_CLASSES);
-					//set the recognition result to the image
-					switch(result)
-					{
-					case 1:
-						setLabel(re_src,"car",boundingBox[i]);
-						send=4.0;break;
-					case 2:
-						setLabel(re_src,"bike",boundingBox[i]);
-						send=5.0;break;
-					default:
-						break;
-					}
-				}
-
-				else{
-					int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
-					//set the recognition result to the image
-					switch(result)
-					{
-					case 1:
-						setLabel(re_src,"NoSound",boundingBox[i]);
-						send=6.0;break;
-					case 2:
-						setLabel(re_src,"30",boundingBox[i]);
-						send=7.0;break;
-					default:
-						break;
-					}
-				}
-
-			}
-			imshow("re_src",re_src);
-			waitKey(5);
-			boundingBox.clear();//必须清楚当前颜色的框，不然下一种颜色的框的起始位置就不是0了
-			
-		}
-		
-
-		//socket通信
-		if (!gb_filled)
-		{
-			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();
-			*(float *)CV_MAT_ELEM_PTR(*g_mat, 1, 0) = send;
-
-			gb_filled = true;
-		}
-
-		int end=cvGetTickCount();
-		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
-		cout<<"时间："<<time<<endl;
-	}	
-}
 
 void openMP_MultiThreadVideo()
 {
 	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
 	IplImage * frame,*copyFrame;
+	float connectResult[9]={0,0,0,0,0,0,0,0,0};
 	while(1)
 	{
+		float TSRSend[7]={0,0,0,0,0,0,0};//store the traffic signs recognition result
+		float TLDSend[2]={0,0};//store the traffic lights detection result
+
 		int start=cvGetTickCount();
 		frame=cvQueryFrame(cap);
 		if(!frame)break;
@@ -616,16 +776,31 @@ void openMP_MultiThreadVideo()
 #pragma omp section
 			{
 				//TSR 
-				TSRecognitionPerFrame(frame);
+				TSRecognitionPerFrame(frame,TSRSend);
 			}
 
 #pragma omp section
 			{
 				//TL detection
-				TLDetectionPerFrame(copyFrame);
+				TLDetectionPerFrame(copyFrame,TLDSend);
 			}
 		}
 
+		//get the union result
+		for (int i=0;i<7;i++)
+		{
+			connectResult[i]=TSRSend[i];
+		}
+		for (int i=0;i<2;i++)
+		{
+			connectResult[7+i]=TLDSend[i];
+		}
+
+		for (int i=0;i<9;i++)
+		{
+			cout<<connectResult[i]<<" ";
+		}
+	//	cout<<" "<<endl;
 		char c=waitKey(5);
 		if (c==27)break;
 
@@ -638,147 +813,297 @@ void openMP_MultiThreadVideo()
 }
 
 
-void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
-	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue)
+void test_RBYcolorMerge_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
+										  CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue)
 {
-	//摄像头相关初始化
-	IplImage* frame;
-	CvVideoWriter *writer=NULL;
-	IplImage *resize_tmp=cvCreateImage(Size(800,600),8,3);
-	bool saveFlag=true;
-	Drogonfly_ImgRead p;
-	p.Camera_Intial();
-
-	float send=0;
+	VideoCapture capture; 
 	vector<Rect> boundingBox;
+	vector<ShapeRecResult> shapeResult;
 	Mat src,re_src,thresh;
 	Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};
-
-#if SAVEVIDEO
-	writer = cvCreateVideoWriter("test6.avi",CV_FOURCC('X','V','I','D'),10,cvGetSize(resize_tmp),1);
-#endif
+	//kalman tracker
+	vector<Point2d> centers;
+	vector<Point2d> storePredictCenters;
+	Rect searchRegion;
+	//滤波容器
+	deque<float> signFilters[7];
+	
+	//process every frame
+	capture.open("D:\\JY\\JY_TrainingSamples\\比赛视频截取\\StopSign.mp4");
+	while(capture.read(src))
+	{
+		float TSRSend[7]={0,0,0,0,0,0,0};
+		bool TSR_flag[7]={false,false,false,false,false,false,false};
+		int start=cvGetTickCount();
+		resize(src,re_src,Size(640,480));
+		Mat re_src1;
+		//GaussianBlur(re_src,re_src1,Size(5,5),0,0);
+		bilateralFilter(re_src,re_src1,7,7*2,7/2);
+		imshow("gaussion",re_src1);
+		waitKey(5);
+		Mat ihls_image = convert_rgb_to_ihls(re_src1);
+		Mat nhs_image=convert_ihls_to_seg(ihls_image);
+		imshow("seg",nhs_image);
+		waitKey(5);
+		Mat noiseremove;
+		int erosion_size=1;
+		int eroionType=MORPH_CROSS;
+		Mat element = getStructuringElement( eroionType,Size( 2*erosion_size + 1, 2*erosion_size+1 ),Point( erosion_size, erosion_size ) );
+		erode( nhs_image, noiseremove, element);
+		imshow("morph",noiseremove);
+		waitKey(2);
 	
 
-	while(1)
-	{
-		frame=p.Camera2IplImage();
-		//保存视频
-#if SAVEVIDEO
-		cvResize(frame,resize_tmp);
-		cvWriteFrame(writer,resize_tmp); 
-#endif
-
-		int start=cvGetTickCount();
-		src=Mat(frame);
-		resize(src,re_src,Size(640,480));
-		Mat ihls_image = convert_rgb_to_ihls(re_src);
-		//分别对黄蓝红颜色检测
-		for (int mode=0;mode<3;mode++)
+		Mat labeledImg=ShapeRecognize(noiseremove,shapeResult);
+		imshow("labeledImg",labeledImg);
+		waitKey(5);
+		for (int i=0;i<shapeResult.size();i++)
 		{
-			Mat nhs_image = convert_ihls_to_nhs(ihls_image,mode);//0:yellow,1:blue,2:red
-			Mat noiseremove;
-			//分别显示黄蓝红色的nhs二值图像 
-			stringstream ss;
-			string index;
-			ss<<mode;
-			ss>>index;
-			string tmp="nhs_image"+index;
-			//滤波
-			medianBlur(nhs_image,noiseremove,3);
-			imshow(tmp,noiseremove);
-			waitKey(2);
-			//形状识别
-			Mat p2=ShapeRecognize(noiseremove,boundingBox);
-			if(boundingBox.size()==0)
+			Rect boundingBox=shapeResult[i].box;
+			Point leftup(boundingBox.x,boundingBox.y);
+			Point rightdown(boundingBox.x+boundingBox.width,boundingBox.y+boundingBox.height);
+			rectangle(re_src,leftup,rightdown,colorMode[2],2);
+			Mat recognizeMat=re_src(boundingBox);//cut the traffic signs
+			int count=0;
+			deque<float>::iterator it;
+
+			//for different color, set different neural network
+			if(shapeResult[i].shape==TRIANGLE&&shapeResult[i].color==Y_VALUE)//yellow
 			{
-				send=0;
+				int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
+				//set the recognition result to the image
+				switch(result)
+				{
+				case 1:
+					setLabel(re_src,"plus",boundingBox);
+					//TSRSend[0]=1.0;break;
+					signFilters[0].push_back(1.0);
+					if (signFilters[0].size()>5)
+						signFilters[0].pop_front();
+					TSR_flag[0]=true;
+					it=signFilters[0].begin();
+					while (it<signFilters[0].end())
+					{
+						if(*it==1.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[0].size()>=0.4)
+					{
+						TSRSend[0]=1.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[0]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+
+				case 2:
+					setLabel(re_src,"man",boundingBox);
+					//TSRSend[1]=2.0;break;
+					signFilters[1].push_back(2.0);
+					if (signFilters[1].size()>5)
+						signFilters[1].pop_front();
+					TSR_flag[1]=true;
+					it=signFilters[1].begin();
+					while (it<signFilters[1].end())
+					{
+						if(*it==2.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[1].size()>=0.4)
+					{
+						TSRSend[1]=2.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[1]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+
+				case 3:
+					setLabel(re_src,"slow",boundingBox);
+					//TSRSend[2]=3.0;break;
+					signFilters[2].push_back(3.0);
+					if (signFilters[2].size()>5)
+						signFilters[2].pop_front();
+					TSR_flag[2]=true;
+					it=signFilters[2].begin();
+					while (it<signFilters[2].end())
+					{
+						if(*it==3.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[2].size()>=0.4)
+					{
+						TSRSend[2]=3.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[2]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+				case 4:
+					setLabel(re_src,"work",boundingBox);
+					break;
+				default:
+					break;
+				}
 			}
-			for (int i=0;i<boundingBox.size();i++)
+			else if(shapeResult[i].shape==CIRCLE&&shapeResult[i].color==B_VALUE)//circle
 			{
-				Point leftup(boundingBox[i].x,boundingBox[i].y);
-				Point rightdown(boundingBox[i].x+boundingBox[i].width,boundingBox[i].y+boundingBox[i].height);
-				rectangle(re_src,leftup,rightdown,colorMode[mode],2);
-				Mat recognizeMat=re_src(boundingBox[i]);//cut the traffic signs
+				int result=Recognize(nnetwork_RoundBlue,pca_RoundBlue,recognizeMat,ROUNDBLUE_CLASSES);
+				//set the recognition result to the image
+				switch(result)
+				{
+				case 1:
+					setLabel(re_src,"car",boundingBox);
+					//TSRSend[3]=4.0;break;
+					signFilters[3].push_back(4.0);
+					if (signFilters[3].size()>5)
+						signFilters[3].pop_front();
+					TSR_flag[3]=true;
+					it=signFilters[3].begin();
+					while (it<signFilters[3].end())
+					{
+						if(*it==4.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[3].size()>=0.4)
+					{
+						TSRSend[3]=4.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[3]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+
+				case 2:
+					setLabel(re_src,"bike",boundingBox);
+					//TSRSend[4]=5.0;break;
+					signFilters[4].push_back(5.0);
+					if (signFilters[4].size()>5)
+						signFilters[4].pop_front();
+					TSR_flag[4]=true;
+					it=signFilters[4].begin();
+					while (it<signFilters[4].end())
+					{
+						if(*it==5.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[4].size()>=0.4)
+					{
+						TSRSend[4]=5.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[4]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+
+				default:
+					break;
+				}
+			}
+
+		else{
+				int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
+				//set the recognition result to the image
+				
+				switch(result)
+				{
+				case 1:
+					setLabel(re_src,"NoSound",boundingBox);
+					//TSRSend[5]=6.0;break;
+					signFilters[5].push_back(6.0);
+					if (signFilters[5].size()>5)
+						signFilters[5].pop_front();
+					TSR_flag[5]=true;
+					it=signFilters[5].begin();
+					while (it<signFilters[5].end())
+					{
+						if(*it==6.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[5].size()>=0.4)
+					{
+						TSRSend[5]=6.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[5]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+
+				case 2:
+					setLabel(re_src,"30",boundingBox);
+					signFilters[6].push_back(7.0);
+					if (signFilters[6].size()>5)
+						signFilters[6].pop_front();
+					TSR_flag[6]=true;
+					it=signFilters[6].begin();
+					while (it<signFilters[6].end())
+					{
+						if(*it==7.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[6].size()>=0.4)
+					{
+						TSRSend[6]=7.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[6]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+					//TSRSend=7.0;break;
+				case 3:
+					setLabel(re_src,"stop",boundingBox);
+					break;
+				default:
+					break;
+				}
+			}
 			
-				//for different color, set different neural network
-				if(mode==0)//yellow
-				{
-					int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
-					//set the recognition result to the image
-					switch(result)
-					{
-					case 1:
-						setLabel(re_src,"plus",boundingBox[i]);
-						send=1.0;
-						break;
-					case 2:
-						setLabel(re_src,"man",boundingBox[i]);
-						send=2.0;break;
-					case 3:
-						setLabel(re_src,"slow",boundingBox[i]);
-						send=3.0;break;
-					default:
-						break;
-					}
-				}
-				else if(mode==1)//blue
-				{
-					int result=Recognize(nnetwork_RoundBlue,pca_RoundBlue,recognizeMat,ROUNDBLUE_CLASSES);
-					//set the recognition result to the image
-					switch(result)
-					{
-					case 1:
-						setLabel(re_src,"car",boundingBox[i]);
-						send=4.0;break;
-					case 2:
-						setLabel(re_src,"bike",boundingBox[i]);
-						send=5.0;break;
-					default:
-						break;
-					}
-				}
-				else{
-					int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
-					//set the recognition result to the image
-					switch(result)
-					{
-					case 1:
-						setLabel(re_src,"NoSound",boundingBox[i]);
-						send=6.0;break;
-					case 2:
-						setLabel(re_src,"30",boundingBox[i]);
-						send=7.0;break;
-					default:
-						break;
-					}
-				}
+		}
+
+		for (int i=0;i<=6;i++)
+		{
+			if(!TSR_flag)
+			{
+				signFilters[i].push_back(0);
+				if (signFilters[i].size()>5)
+					signFilters[i].pop_front();
 			}
-			imshow("re_src",re_src);
-			waitKey(5);
-			boundingBox.clear();//必须清楚当前颜色的框，不然下一种颜色的框的起始位置就不是0了
-		}
-		//socket通信
-		if (!gb_filled)
-		{
-			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();
-			*(float *)CV_MAT_ELEM_PTR(*g_mat, 1, 0) = send;
-
-			gb_filled = true;
+			cout<<TSRSend[i]<<" ";
 		}
 
-		//如果退出，做相关的清除工作
-		int c=cvWaitKey(1);
-		if (c==27)
-		{
-			p.ClearBuffer();
-			cvReleaseVideoWriter(&writer); 
-			break;
-		}
-
-		int end=cvGetTickCount();
+		int end=cvGetTickCount();//测试发现颜色分割后合在一张图上速度变快
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
-		cout<<"时间："<<time<<endl;
+		cout<<"  time:"<<time<<endl;
+		imshow("re_src",re_src);
+		waitKey(5);
+		shapeResult.clear();
 	}	
-
-
 }

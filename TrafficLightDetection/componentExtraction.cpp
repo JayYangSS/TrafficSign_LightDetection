@@ -1,15 +1,17 @@
 #include"std_tlr.h"
 
-
 #define SIZE_FILTER 1
 #define REGION_GROW_FILTER 1
 #define RECT_FILTER 1
+
+extern deque<float> TLFilters[2];
+extern bool TLD_flag[2];//traffic lighs control flags
 
 bool regionGrowA(int nSeedX,int nSeedY,BYTE * pUnchInput,int nWidth,int nHeight,
 	             BYTE * pUnRegion,int nThreshold,int& color,CvRect &rect,int& pixelNum);
 
 
-void componentExtraction(IplImage* inputImage,IplImage* srcImage,int* p,vector<Rect> &found_filtered)
+void componentExtraction(IplImage* inputImage, IplImage* srcImage,float* TLDSend,vector<Rect> &found_filtered)
 {
     int r=0;int g=0;
 	int iWidth = inputImage->width;
@@ -40,42 +42,29 @@ void componentExtraction(IplImage* inputImage,IplImage* srcImage,int* p,vector<R
 	if(flag==NULL)
 		return;
 	memset(flag,0,iWidth*iHeight);//flag矩阵初始化为0
-	for(i=0;i<iHeight;i++){
-		for(j=0;j<iWidth;j++){
-
-			if(pImageData[i*iWidthStep+j]!=0 && flag[i*iWidth+j]==0){     //图像像素值不为0且没有被处理过
-					
-				
+	for(i=0;i<iHeight;i++)
+	{
+		for(j=0;j<iWidth;j++)
+		{
+			if(pImageData[i*iWidthStep+j]!=0 && flag[i*iWidth+j]==0)//图像像素值不为0且没有被处理过
+			{     
 				//加入聚合区域的像素点相应标志位置（由flag存储）被置为255，种子点的像素值被存储入oColor中，区域内的像素点数目存入pixelNum
-				if(regionGrowA(j,i,pImageData,iWidth,iHeight,flag,thresholding,oColor,oRect,pixelNum)){
+				if(regionGrowA(j,i,pImageData,iWidth,iHeight,flag,thresholding,oColor,oRect,pixelNum))
+				{
 
 #if SIZE_FILTER
-	
-					//printf("%d,%d,%d,%d\n",oRect.x,oRect.y,oRect.width,oRect.height);
 					//候选像素区域的外围矩形区域要满足一定的面积，宽高比限制才能被保留
-					if(sizeFiltering(oRect)){
+					if(sizeFiltering(oRect))
+					{
 						rectNum++;
-
 #if REGION_GROW_FILTER
 						//rectangleDetection(imageGrayScale,srcImage,oRect,oColor);
 						CvRect ooRect;
-						if( regionGrowFiltering(imageGrayScale,srcImage,oRect,ooRect,found_filtered) ){
+						if( regionGrowFiltering(imageGrayScale,srcImage,oRect,ooRect,found_filtered) )
+						{
 							rectNum2++;
-
-
-
-
-	///////////////////////////////////////////////////////////////////////////////////////
-						///此处要加入判断矩形框内包含交通灯边框的判断函数///
-	///////////////////////////////////////////////////////////////////////////////////////
-
-
 #if  RECT_FILTER
 							rectangleDetection(imageGrayScale,srcImage,ooRect,oColor,&r,&g);
-							//if(oColor==RED_PIXEL_LABEL)
-							//	r=r+1;
-							//if(oColor==GREEN_PIXEL_LABEL)
-							//	g=g+1;
 #endif	//RECT_FILTER
 
 						} //regionGrowFiltering_if
@@ -90,12 +79,37 @@ void componentExtraction(IplImage* inputImage,IplImage* srcImage,int* p,vector<R
 
 		}
 	}
+
+
+
+	//filter the result to make it stable
+	deque<float>::iterator it;
+	int containCount=0;//计算容器中有效检测结果数目
 	if (r>=1)
-		p[0]=1;//p[0]=1，表示检测到红灯
-	else p[0]=0;
+	{
+		TLFilters[0].push_back(8.0);
+		if (TLFilters[0].size()>5)
+			TLFilters[0].pop_front();
+		TLD_flag[0]=true;
+		it=TLFilters[0].begin();
+		while (it<TLFilters[0].end())
+		{
+			if(*it==1.0)containCount++;
+			it++;
+		}
+		if ((float)(containCount)/(float)TLFilters[0].size()>=0.4)
+		{
+			TLDSend[0]=8.0;//表示检测到红灯
+		}else
+		{
+			TLDSend[0]=0;
+		}
+		containCount=0;
+	}
+
 	if(g>=1)
-		p[1]=1;//p[1]=1，表示检测到绿灯
-	else p[1]=0;
+		TLDSend[1]=9.0;//p[1]=1，表示检测到绿灯
+	else TLDSend[1]=0;
 
 	if(flag!=NULL){
 		delete [] flag;
