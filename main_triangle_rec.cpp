@@ -28,8 +28,6 @@ CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue;//neural networks for th
 PCA pca,pca_RoundRim,pca_RoundBlue;
 deque<float> signFilters[7];
 deque<float> TLFilters[2];
-bool TSR_flag[7]={false,false,false,false,false,false,false};//Traffic sign control flag
-bool TLD_flag[2]={false,false};//traffic lighs control flags
 
 //test function
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
@@ -365,7 +363,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 					signFilters[0].push_back(1.0);
 					if (signFilters[0].size()>5)
 						signFilters[0].pop_front();
-					TSR_flag[0]=true;
+
 					it=signFilters[0].begin();
 					while (it<signFilters[0].end())
 					{
@@ -391,7 +389,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 					signFilters[1].push_back(2.0);
 					if (signFilters[1].size()>5)
 						signFilters[1].pop_front();
-					TSR_flag[1]=true;
+
 					it=signFilters[1].begin();
 					while (it<signFilters[1].end())
 					{
@@ -417,7 +415,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 					signFilters[2].push_back(3.0);
 					if (signFilters[2].size()>5)
 						signFilters[2].pop_front();
-					TSR_flag[2]=true;
+	
 					it=signFilters[2].begin();
 					while (it<signFilters[2].end())
 					{
@@ -456,7 +454,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 					signFilters[3].push_back(4.0);
 					if (signFilters[3].size()>5)
 						signFilters[3].pop_front();
-					TSR_flag[3]=true;
+			
 					it=signFilters[3].begin();
 					while (it<signFilters[3].end())
 					{
@@ -482,7 +480,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 					signFilters[4].push_back(5.0);
 					if (signFilters[4].size()>5)
 						signFilters[4].pop_front();
-					TSR_flag[4]=true;
+		
 					it=signFilters[4].begin();
 					while (it<signFilters[4].end())
 					{
@@ -547,7 +545,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 					signFilters[6].push_back(7.0);
 					if (signFilters[6].size()>5)
 						signFilters[6].pop_front();
-					TSR_flag[6]=true;
+	
 					it=signFilters[6].begin();
 					while (it<signFilters[6].end())
 					{
@@ -760,8 +758,8 @@ void TLDetection()
 
 void openMP_MultiThreadVideo()
 {
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
 	IplImage * frame,*copyFrame;
 	float connectResult[9]={0,0,0,0,0,0,0,0,0};
 	while(1)

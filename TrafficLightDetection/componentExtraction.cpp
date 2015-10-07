@@ -5,7 +5,6 @@
 #define RECT_FILTER 1
 
 extern deque<float> TLFilters[2];
-extern bool TLD_flag[2];//traffic lighs control flags
 
 bool regionGrowA(int nSeedX,int nSeedY,BYTE * pUnchInput,int nWidth,int nHeight,
 	             BYTE * pUnRegion,int nThreshold,int& color,CvRect &rect,int& pixelNum);
@@ -85,40 +84,79 @@ void componentExtraction(IplImage* inputImage, IplImage* srcImage,float* TLDSend
 	//filter the result to make it stable
 	deque<float>::iterator it;
 	int containCount=0;//计算容器中有效检测结果数目
-	if (r>=1)
+	if (r<1&&g<1)
 	{
-		TLFilters[0].push_back(8.0);
-		if (TLFilters[0].size()>5)
-			TLFilters[0].pop_front();
-		TLD_flag[0]=true;
-		it=TLFilters[0].begin();
-		while (it<TLFilters[0].end())
+		for (int i=0;i<2;i++)
 		{
-			if(*it==1.0)containCount++;
-			it++;
+			TLFilters[i].push_back(0);
+			if (TLFilters[i].size()>5)
+				TLFilters[i].pop_front();
+
+			deque<float>::iterator it;
+			int TSContainCount=0;
+			it=TLFilters[i].begin();
+			while(it<TLFilters[i].end())
+			{
+				if (*it==(float)(i+8))TSContainCount++;
+				it++;
+			}
+#if ISDEBUG_TL
+			if (i==0)
+				cout<<"TSContainCount:"<<TSContainCount<<endl;
+#endif
+			if((float)(TSContainCount)/(float)TLFilters[i].size()>=0.4)
+				TLDSend[i]=(float)(i+8);
+			else
+				TLDSend[i]=0;
 		}
-		if ((float)(containCount)/(float)TLFilters[0].size()>=0.4)
+	}else
+	{
+		if (r>=1)
 		{
-			TLDSend[0]=8.0;//表示检测到红灯
-		}else
-		{
-			TLDSend[0]=0;
+			TLFilters[0].push_back(8.0);//red
+			if (TLFilters[0].size()>5)
+				TLFilters[0].pop_front();
+
+			it=TLFilters[0].begin();
+			while (it<TLFilters[0].end())
+			{
+				if(*it==8.0)containCount++;
+				it++;
+			}
+			if ((float)(containCount)/(float)TLFilters[0].size()>=0.4)
+				TLDSend[0]=8.0;//表示检测到红灯
+			else
+				TLDSend[0]=0;
+			containCount=0;
 		}
-		containCount=0;
+
+		if(g>=1)
+		{
+			TLFilters[1].push_back(9.0);//green
+			if (TLFilters[1].size()>5)
+				TLFilters[1].pop_front();
+
+			it=TLFilters[1].begin();
+			while (it<TLFilters[1].end())
+			{
+				if(*it==9.0)containCount++;
+				it++;
+			}
+			if ((float)(containCount)/(float)TLFilters[1].size()>=0.4)
+				TLDSend[1]=9.0;//表示检测到绿灯
+			else
+				TLDSend[1]=0;
+			containCount=0;
+		}
 	}
 
-	if(g>=1)
-		TLDSend[1]=9.0;//p[1]=1，表示检测到绿灯
-	else TLDSend[1]=0;
-
+	
+	//delete the image pointer
 	if(flag!=NULL){
 		delete [] flag;
 		flag = NULL;
 	}
-
 	cvReleaseImage(&imageGrayScale);
-
-
 }
 
 
