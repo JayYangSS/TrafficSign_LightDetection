@@ -61,6 +61,7 @@ Mat convert_rgb_to_ihls(Mat rgb_image)
 
 	Mat ihls_image(rgb_image.rows, rgb_image.cols, CV_8UC3);
 
+//#pragma omp parallel for
 	for (int i = 0; i < rgb_image.rows; ++i)
 	{
 		const uchar* rgb_data = rgb_image.ptr<uchar> (i);
@@ -206,6 +207,7 @@ Mat	convert_ihls_to_seg(Mat ihls_image, int hue_max, int hue_min,int sat_min)
 	// Otherwise for each pixel it had to check this condition.
 	// Nicer implementation could be to separate these two for loops in
 	// two different functions, one for red and one for blue.
+//#pragma omp parallel for
 		for (int i = 0; i < ihls_image.rows; ++i)
 		{
 			const uchar *ihls_data = ihls_image.ptr<uchar> (i);

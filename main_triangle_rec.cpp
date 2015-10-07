@@ -339,6 +339,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 	int filterLen=shapeResult.size();
 	if (filterLen!=0)
 	{
+#pragma omp parallel for
 		for (int i=0;i<shapeResult.size();i++)
 		{
 			Rect boundingBox=shapeResult[i].box;
