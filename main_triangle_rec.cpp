@@ -625,7 +625,7 @@ int main()
 {
 	//socket
 	SocketInit();
-	g_mat = cvCreateMat(2, 1, CV_32FC1);//transmit data
+	g_mat = cvCreateMat(10, 1, CV_32FC1);//transmit data
 
 	//TL detection HOG descriptor
 	CvFont font; 
@@ -809,7 +809,17 @@ void openMP_MultiThreadVideo()
 		{
 			cout<<connectResult[i]<<" ";
 		}
-	//	cout<<" "<<endl;
+
+		//socket
+		if (!gb_filled)
+		{
+			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();		
+			//put the result into the g_mat to transmit
+			for (int i=1;i<=9;i++)
+				*(float *)CV_MAT_ELEM_PTR(*g_mat, i, 0)=connectResult[i-1];
+			gb_filled = true;
+		}
+
 		char c=waitKey(5);
 		if (c==27)break;
 

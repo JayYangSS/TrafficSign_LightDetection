@@ -204,9 +204,6 @@ void hogSVMTrainTL(HOGDescriptor &myHOG,bool TRAIN,bool HORZ)
   }
 
 
-
-
-
   else
 {
 	if(TRAIN)
