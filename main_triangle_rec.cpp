@@ -31,7 +31,6 @@ deque<float> TLFilters[2];
 bool TSR_flag[7]={false,false,false,false,false,false,false};//Traffic sign control flag
 bool TLD_flag[2]={false,false};//traffic lighs control flags
 
-
 //test function
 void test_RBYcolor_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
@@ -339,269 +338,281 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 	imshow("labeledImg",labeledImg);
 	waitKey(5);
 #endif
-	for (int i=0;i<shapeResult.size();i++)
+	int filterLen=shapeResult.size();
+	if (filterLen!=0)
 	{
-		Rect boundingBox=shapeResult[i].box;
-		Point leftup(boundingBox.x,boundingBox.y);
-		Point rightdown(boundingBox.x+boundingBox.width,boundingBox.y+boundingBox.height);
-	//	rectangle(re_src,leftup,rightdown,colorMode[2],2);
-		Mat recognizeMat=re_src(boundingBox);//cut the traffic signs
-		//int count=0;
-		deque<float>::iterator it;
-
-		//for different color, set different neural network
-		if(shapeResult[i].shape==TRIANGLE&&shapeResult[i].color==Y_VALUE)//yellow
+		for (int i=0;i<shapeResult.size();i++)
 		{
-			rectangle(re_src,leftup,rightdown,colorMode[0],2);
-			int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
-			//set the recognition result to the image
-			switch(result)
+			Rect boundingBox=shapeResult[i].box;
+			Point leftup(boundingBox.x,boundingBox.y);
+			Point rightdown(boundingBox.x+boundingBox.width,boundingBox.y+boundingBox.height);
+			//	rectangle(re_src,leftup,rightdown,colorMode[2],2);
+			Mat recognizeMat=re_src(boundingBox);//cut the traffic signs
+			//int count=0;
+			deque<float>::iterator it;
+
+			//for different color, set different neural network
+			if(shapeResult[i].shape==TRIANGLE&&shapeResult[i].color==Y_VALUE)//yellow
 			{
-			case 1:
-				setLabel(re_src,"plus",boundingBox);
-				//TSRSend[0]=1.0;break;
-				signFilters[0].push_back(1.0);
-				if (signFilters[0].size()>5)
-					signFilters[0].pop_front();
-				TSR_flag[0]=true;
-				it=signFilters[0].begin();
-				while (it<signFilters[0].end())
+				rectangle(re_src,leftup,rightdown,colorMode[0],2);
+				int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
+				//set the recognition result to the image
+				switch(result)
 				{
-					if(*it==1.0)count++;
-					it++;
-				}
-				if((float)(count)/(float)signFilters[0].size()>=0.4)
-				{
-					TSRSend[0]=1.0;
-					//cout<<"detected"<<endl;
-				}
-				else
-				{
-					TSRSend[0]=0.0;
-					//cout<<"No detected"<<endl;
-				}
-				count=0;
-				break;	
+				case 1:
+					setLabel(re_src,"plus",boundingBox);
+					//TSRSend[0]=1.0;break;
+					signFilters[0].push_back(1.0);
+					if (signFilters[0].size()>5)
+						signFilters[0].pop_front();
+					TSR_flag[0]=true;
+					it=signFilters[0].begin();
+					while (it<signFilters[0].end())
+					{
+						if(*it==1.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[0].size()>=0.4)
+					{
+						TSRSend[0]=1.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[0]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
 
-			case 2:
-				setLabel(re_src,"man",boundingBox);
-				//TSRSend[1]=2.0;break;
-				signFilters[1].push_back(2.0);
-				if (signFilters[1].size()>5)
-					signFilters[1].pop_front();
-				TSR_flag[1]=true;
-				it=signFilters[1].begin();
-				while (it<signFilters[1].end())
-				{
-					if(*it==2.0)count++;
-					it++;
-				}
-				if((float)(count)/(float)signFilters[1].size()>=0.4)
-				{
-					TSRSend[1]=2.0;
-					//cout<<"detected"<<endl;
-				}
-				else
-				{
-					TSRSend[1]=0.0;
-					//cout<<"No detected"<<endl;
-				}
-				count=0;
-				break;	
+				case 2:
+					setLabel(re_src,"man",boundingBox);
+					//TSRSend[1]=2.0;break;
+					signFilters[1].push_back(2.0);
+					if (signFilters[1].size()>5)
+						signFilters[1].pop_front();
+					TSR_flag[1]=true;
+					it=signFilters[1].begin();
+					while (it<signFilters[1].end())
+					{
+						if(*it==2.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[1].size()>=0.4)
+					{
+						TSRSend[1]=2.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[1]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
 
-			case 3:
-				setLabel(re_src,"slow",boundingBox);
-				//TSRSend[2]=3.0;break;
-				signFilters[2].push_back(3.0);
-				if (signFilters[2].size()>5)
-					signFilters[2].pop_front();
-				TSR_flag[2]=true;
-				it=signFilters[2].begin();
-				while (it<signFilters[2].end())
-				{
-					if(*it==3.0)count++;
-					it++;
+				case 3:
+					setLabel(re_src,"slow",boundingBox);
+					//TSRSend[2]=3.0;break;
+					signFilters[2].push_back(3.0);
+					if (signFilters[2].size()>5)
+						signFilters[2].pop_front();
+					TSR_flag[2]=true;
+					it=signFilters[2].begin();
+					while (it<signFilters[2].end())
+					{
+						if(*it==3.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[2].size()>=0.4)
+					{
+						TSRSend[2]=3.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[2]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+				case 4:
+					setLabel(re_src,"work",boundingBox);
+					break;
+				default:
+					break;
 				}
-				if((float)(count)/(float)signFilters[2].size()>=0.4)
+			}
+			else if(shapeResult[i].shape==CIRCLE&&shapeResult[i].color==B_VALUE)//circle
+			{
+				rectangle(re_src,leftup,rightdown,colorMode[1],2);
+				int result=Recognize(nnetwork_RoundBlue,pca_RoundBlue,recognizeMat,ROUNDBLUE_CLASSES);
+				//set the recognition result to the image
+				switch(result)
 				{
-					TSRSend[2]=3.0;
-					//cout<<"detected"<<endl;
+				case 1:
+					setLabel(re_src,"car",boundingBox);
+					//TSRSend[3]=4.0;break;
+					signFilters[3].push_back(4.0);
+					if (signFilters[3].size()>5)
+						signFilters[3].pop_front();
+					TSR_flag[3]=true;
+					it=signFilters[3].begin();
+					while (it<signFilters[3].end())
+					{
+						if(*it==4.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[3].size()>=0.4)
+					{
+						TSRSend[3]=4.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[3]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+
+				case 2:
+					setLabel(re_src,"bike",boundingBox);
+					//TSRSend[4]=5.0;break;
+					signFilters[4].push_back(5.0);
+					if (signFilters[4].size()>5)
+						signFilters[4].pop_front();
+					TSR_flag[4]=true;
+					it=signFilters[4].begin();
+					while (it<signFilters[4].end())
+					{
+						if(*it==5.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[4].size()>=0.4)
+					{
+						TSRSend[4]=5.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[4]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+
+				default:
+					break;
 				}
-				else
+			}
+
+			else{
+				rectangle(re_src,leftup,rightdown,colorMode[2],2);
+				int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
+				//set the recognition result to the image
+
+				switch(result)
 				{
-					TSRSend[2]=0.0;
-					//cout<<"No detected"<<endl;
+				case 1:
+					setLabel(re_src,"NoSound",boundingBox);
+					//TSRSend[5]=6.0;break;
+					signFilters[5].push_back(6.0);
+					if (signFilters[5].size()>5)
+						signFilters[5].pop_front();
+
+					it=signFilters[5].begin();
+					while (it<signFilters[5].end())
+					{
+						if(*it==6.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[5].size()>=0.4)
+					{
+						TSRSend[5]=6.0;//为什么TSRSend是无法计算的表达式的值？？
+#if ISDEBUG_TS
+						cout<<"The number of NoSound sign in the container:"<<count<<endl;
+#endif
+					}
+					else
+					{
+						TSRSend[5]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+
+				case 2:
+					setLabel(re_src,"30",boundingBox);
+					signFilters[6].push_back(7.0);
+					if (signFilters[6].size()>5)
+						signFilters[6].pop_front();
+					TSR_flag[6]=true;
+					it=signFilters[6].begin();
+					while (it<signFilters[6].end())
+					{
+						if(*it==7.0)count++;
+						it++;
+					}
+					if((float)(count)/(float)signFilters[6].size()>=0.4)
+					{
+						TSRSend[6]=7.0;
+						//cout<<"detected"<<endl;
+					}
+					else
+					{
+						TSRSend[6]=0.0;
+						//cout<<"No detected"<<endl;
+					}
+					count=0;
+					break;	
+					//TSRSend=7.0;break;
+				case 3:
+					setLabel(re_src,"stop",boundingBox);
+					break;
+				default:
+					break;
 				}
-				count=0;
-				break;	
-			case 4:
-				setLabel(re_src,"work",boundingBox);
-				break;
-			default:
-				break;
 			}
 		}
-		else if(shapeResult[i].shape==CIRCLE&&shapeResult[i].color==B_VALUE)//circle
-		{
-			rectangle(re_src,leftup,rightdown,colorMode[1],2);
-			int result=Recognize(nnetwork_RoundBlue,pca_RoundBlue,recognizeMat,ROUNDBLUE_CLASSES);
-			//set the recognition result to the image
-			switch(result)
-			{
-			case 1:
-				setLabel(re_src,"car",boundingBox);
-				//TSRSend[3]=4.0;break;
-				signFilters[3].push_back(4.0);
-				if (signFilters[3].size()>5)
-					signFilters[3].pop_front();
-				TSR_flag[3]=true;
-				it=signFilters[3].begin();
-				while (it<signFilters[3].end())
-				{
-					if(*it==4.0)count++;
-					it++;
-				}
-				if((float)(count)/(float)signFilters[3].size()>=0.4)
-				{
-					TSRSend[3]=4.0;
-					//cout<<"detected"<<endl;
-				}
-				else
-				{
-					TSRSend[3]=0.0;
-					//cout<<"No detected"<<endl;
-				}
-				count=0;
-				break;	
-
-			case 2:
-				setLabel(re_src,"bike",boundingBox);
-				//TSRSend[4]=5.0;break;
-				signFilters[4].push_back(5.0);
-				if (signFilters[4].size()>5)
-					signFilters[4].pop_front();
-				TSR_flag[4]=true;
-				it=signFilters[4].begin();
-				while (it<signFilters[4].end())
-				{
-					if(*it==5.0)count++;
-					it++;
-				}
-				if((float)(count)/(float)signFilters[4].size()>=0.4)
-				{
-					TSRSend[4]=5.0;
-					//cout<<"detected"<<endl;
-				}
-				else
-				{
-					TSRSend[4]=0.0;
-					//cout<<"No detected"<<endl;
-				}
-				count=0;
-				break;	
-
-			default:
-				break;
-			}
-		}
-
-		else{
-			rectangle(re_src,leftup,rightdown,colorMode[2],2);
-			int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
-			//set the recognition result to the image
-
-			switch(result)
-			{
-			case 1:
-				setLabel(re_src,"NoSound",boundingBox);
-				//TSRSend[5]=6.0;break;
-				signFilters[5].push_back(6.0);
-				if (signFilters[5].size()>5)
-					signFilters[5].pop_front();
-				TSR_flag[5]=true;
-				it=signFilters[5].begin();
-				while (it<signFilters[5].end())
-				{
-					if(*it==6.0)count++;
-					it++;
-				}
-				if((float)(count)/(float)signFilters[5].size()>=0.4)
-				{
-					TSRSend[5]=6.0;
-					//cout<<"detected"<<endl;
-				}
-				else
-				{
-					TSRSend[5]=0.0;
-					//cout<<"No detected"<<endl;
-				}
-				count=0;
-				break;	
-
-			case 2:
-				setLabel(re_src,"30",boundingBox);
-				signFilters[6].push_back(7.0);
-				if (signFilters[6].size()>5)
-					signFilters[6].pop_front();
-				TSR_flag[6]=true;
-				it=signFilters[6].begin();
-				while (it<signFilters[6].end())
-				{
-					if(*it==7.0)count++;
-					it++;
-				}
-				if((float)(count)/(float)signFilters[6].size()>=0.4)
-				{
-					TSRSend[6]=7.0;
-					//cout<<"detected"<<endl;
-				}
-				else
-				{
-					TSRSend[6]=0.0;
-					//cout<<"No detected"<<endl;
-				}
-				count=0;
-				break;	
-				//TSRSend=7.0;break;
-			case 3:
-				setLabel(re_src,"stop",boundingBox);
-				break;
-			default:
-				break;
-			}
-		}
-
 	}
-
-	for (int i=0;i<=6;i++)
+	else
 	{
-		if(!TSR_flag[i])
+		//处理没有检测结果的情况
+		for (int i=0;i<=6;i++)
 		{
 			signFilters[i].push_back(0);
 			if (signFilters[i].size()>5)
 				signFilters[i].pop_front();
-		}
-		//cout<<TSRSend[i]<<" ";
+			//cout<<TSRSend[i]<<" ";
 
 
-		deque<float>::iterator it;
-		int containCount=0;//计算容器中有效检测结果数目
-		it=signFilters[i].begin();
-		while (it<signFilters[i].end())
-		{
-			if((*it)==(float)(i+1))
-				containCount++;
-			it++;
-		}
-		if((float)(containCount)/(float)signFilters[i].size()>=0.4)
-		{
-			TSRSend[i]=(float)(i+1);
-			//cout<<"detected"<<endl;
-		}
-		else
-		{
-			TSRSend[i]=0.0;
-			//cout<<"No detected"<<endl;
+			deque<float>::iterator it;
+			int containCount=0;//计算容器中有效检测结果数目
+			it=signFilters[i].begin();
+			while (it<signFilters[i].end())
+			{
+				if((*it)==(float)(i+1))
+					containCount++;
+				it++;
+			}
+#if ISDEBUG_TS
+			if (i==5)
+			{
+				cout<<"The number of NoSound sign in the container:"<<containCount<<endl;
+			}
+#endif
+			if((float)(containCount)/(float)signFilters[i].size()>=0.4)
+			{
+				TSRSend[i]=(float)(i+1);
+				//cout<<"detected"<<endl;
+			}
+			else
+			{
+				TSRSend[i]=0.0;
+				//cout<<"No detected"<<endl;
+			}
+
 		}
 
 	}
