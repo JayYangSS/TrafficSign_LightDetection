@@ -12,7 +12,7 @@
 Size Win_vertical(15,30),block_vertical(5,10),blockStride_vertical(5,5),cell_vertical(5,5);
 HOGDescriptor myHOG_vertical(Win_vertical,block_vertical,blockStride_vertical,cell_vertical,9,1,-1.0,0,0.2,true,64);
 HOGDescriptor myHOG_horz(Size(36,12),Size(12,6),Size(6,6),Size(6,6),9,1,-1.0,0,0.2,true,64);
-int Frame_pos;//当前帧位置
+int Frame_pos;//碌卤脟掳脰隆脦禄脰脙
 
 //control TSR_flag
 bool isTrain=false;//traffic signs
@@ -40,7 +40,7 @@ void videoMultiThread();
 void test_RBYcolorMerge_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvANN_MLP &nnetwork,
 	CvANN_MLP &nnetwork_RoundRim,CvANN_MLP &nnetwork_RoundBlue);
 void openMP_MultiThreadVideo();
-
+void openMP_MultiThreadCamera();
 
 Point2d getBoxCenter(Rect &boundingBox){
 	Point2d centerPoint;
@@ -65,7 +65,7 @@ Rect getSearchRegion(Point2d center,Size windowSize,Size imageSize)
 	int imgHeight=imageSize.height;
 	int windowWidth=windowSize.width;
 	int windowHeight=windowSize.height;
-	//横坐标
+	//潞谩脳酶卤锚
 	if(center.x-windowWidth/2<0)
 	{
 		searchRegion.x=0;
@@ -81,7 +81,7 @@ Rect getSearchRegion(Point2d center,Size windowSize,Size imageSize)
 		searchRegion.x=center.x-windowWidth/2;
 		searchRegion.width=windowWidth;
 	}
-	//纵坐标
+	//脳脻脳酶卤锚
 	if(center.y-windowHeight/2<0)
 	{
 		searchRegion.y=0;
@@ -132,7 +132,7 @@ void covertImg2HOG(Mat img,vector<float> &descriptors)
 	HOGDescriptor hog(Size(40,40),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
 	hog.compute(img,descriptors,Size(8,8));
 
-	cout<<"HOG特征子维数："<<descriptors.size()<<endl;
+	cout<<"HOG脤脴脮梅脳脫脦卢脢媒拢潞"<<descriptors.size()<<endl;
 }
 
 //get the HOG features(float array) of each image in the specified folder
@@ -151,7 +151,7 @@ int readdata(String path,int num_folder,String outputfile)
 	{
 		ClassId=ClassId+1.0;
 		//get the folder name
-		SS_folder.clear();//注意清空，不然之前的值不会被覆盖掉
+		SS_folder.clear();//脳垄脪芒脟氓驴脮拢卢虏禄脠禄脰庐脟掳碌脛脰碌虏禄禄谩卤禄赂虏赂脟碌么
 		SS_folder<<j;
 		SS_folder>>folder;
 		txt_path=path+"\\"+folder+"\\description.txt";
@@ -528,7 +528,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 					}
 					if((float)(count)/(float)signFilters[5].size()>=0.4)
 					{
-						TSRSend[5]=6.0;//为什么TSRSend是无法计算的表达式的值？？
+						TSRSend[5]=6.0;//脦陋脢虏脙麓TSRSend脢脟脦脼路篓录脝脣茫碌脛卤铆麓茂脢陆碌脛脰碌拢驴拢驴
 #if ISDEBUG_TS
 						cout<<"The number of NoSound sign in the container:"<<count<<endl;
 #endif
@@ -577,7 +577,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 	}
 	else
 	{
-		//处理没有检测结果的情况
+		//麓娄脌铆脙禄脫脨录矛虏芒陆谩鹿没碌脛脟茅驴枚
 		for (int i=0;i<=6;i++)
 		{
 			signFilters[i].push_back(0);
@@ -587,7 +587,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 
 
 			deque<float>::iterator it;
-			int containCount=0;//计算容器中有效检测结果数目
+			int containCount=0;//录脝脣茫脠脻脝梅脰脨脫脨脨搂录矛虏芒陆谩鹿没脢媒脛驴
 			it=signFilters[i].begin();
 			while (it<signFilters[i].end())
 			{
@@ -679,7 +679,8 @@ int main()
 	//cameraMultiThread();
 	//videoMultiThread();
 	//TLDetection();
-	openMP_MultiThreadVideo();
+	//openMP_MultiThreadVideo();
+	openMP_MultiThreadCamera();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -746,7 +747,7 @@ void TLDetection()
 		cout << "Frame Grabbed." << endl;
 		int End=cvGetTickCount();
 		float time=(float)(End-Start)/(cvGetTickFrequency()*1000000);
-		cout<<"Time："<<time<<endl;
+		cout<<"Time拢潞"<<time<<endl;
 	}
 
 	cvDestroyAllWindows();
@@ -826,7 +827,7 @@ void openMP_MultiThreadVideo()
 
 		int end=cvGetTickCount();
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
-		cout<<"时间："<<time<<endl;
+		cout<<"脢卤录盲拢潞"<<time<<endl;
 	}
 	cvReleaseCapture(&cap);
 	cvDestroyAllWindows();
@@ -845,11 +846,11 @@ void test_RBYcolorMerge_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvAN
 	vector<Point2d> centers;
 	vector<Point2d> storePredictCenters;
 	Rect searchRegion;
-	//滤波容器
+	//脗脣虏篓脠脻脝梅
 	deque<float> signFilters[7];
 	
 	//process every frame
-	capture.open("D:\\JY\\JY_TrainingSamples\\比赛视频截取\\StopSign.mp4");
+	capture.open("D:\\JY\\JY_TrainingSamples\\卤脠脠眉脢脫脝碌陆脴脠隆\\StopSign.mp4");
 	while(capture.read(src))
 	{
 		float TSRSend[7]={0,0,0,0,0,0,0};
@@ -1119,11 +1120,91 @@ void test_RBYcolorMerge_Video(PCA &pca,PCA &pca_RoundRim,PCA &pca_RoundBlue,CvAN
 			cout<<TSRSend[i]<<" ";
 		}
 
-		int end=cvGetTickCount();//测试发现颜色分割后合在一张图上速度变快
+		int end=cvGetTickCount();//虏芒脢脭路垄脧脰脩脮脡芦路脰赂卯潞贸潞脧脭脷脪禄脮脜脥录脡脧脣脵露脠卤盲驴矛
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
 		cout<<"  time:"<<time<<endl;
 		imshow("re_src",re_src);
 		waitKey(5);
 		shapeResult.clear();
 	}	
+}
+
+void openMP_MultiThreadCamera()
+{
+	Drogonfly_ImgRead p;
+	p.Camera_Intial();
+
+	IplImage * src_frame,*copyFrame;
+	float connectResult[9]={0,0,0,0,0,0,0,0,0};
+	while(1)
+	{
+		src_frame=p.Camera2IplImage();
+		float TSRSend[7]={0,0,0,0,0,0,0};//store the traffic signs recognition result
+		float TLDSend[2]={0,0};//store the traffic lights detection result
+		IplImage* frame=cvCreateImage(Size(800,600),src_frame->depth,src_frame->nChannels);
+		int start=cvGetTickCount();
+		if(!frame)break;
+		//MultiThread
+		//cvNamedWindow("TL");鍔犱笂杩欎袱琛屼唬鐮侊紝绋嬪簭鐨勫浘鍍忕粡甯稿氨鏄剧ず涓嶅嚭鏉ヤ簡锛岄毦閬撴槸閲嶅鍒涘缓window鐨勭紭鏁咃紵
+		//namedWindow("TSR");
+#if ISDEBUG_TL
+		cvNamedWindow("imgseg");
+#endif
+		//copyFrame=cvCloneImage(frame);
+		copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
+		cvResize(src_frame,frame);
+		cvCopy(frame,copyFrame);
+
+#pragma omp parallel sections
+		{
+#pragma omp section
+			{
+				//TSR 
+				TSRecognitionPerFrame(frame,TSRSend);
+			}
+
+#pragma omp section
+			{
+				//TL detection
+				TLDetectionPerFrame(copyFrame,TLDSend);
+			}
+		}
+		cvReleaseImage(&frame);
+		//get the union result
+		for (int i=0;i<7;i++)
+		{
+			connectResult[i]=TSRSend[i];
+		}
+		for (int i=0;i<2;i++)
+		{
+			connectResult[7+i]=TLDSend[i];
+		}
+
+		for (int i=0;i<9;i++)
+		{
+			cout<<connectResult[i]<<" ";
+		}
+
+		//socket
+		if (!gb_filled)
+		{
+			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();		
+			//put the result into the g_mat to transmit
+			for (int i=1;i<=9;i++)
+				*(float *)CV_MAT_ELEM_PTR(*g_mat, i, 0)=connectResult[i-1];
+			gb_filled = true;
+		}
+
+		char c=waitKey(5);
+		if (c==27)
+		{
+			p.ClearBuffer();
+			break;
+		}
+		
+		int end=cvGetTickCount();
+		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
+		cout<<"脢卤录盲拢潞"<<time<<endl;
+	}
+	cvDestroyAllWindows();
 }
