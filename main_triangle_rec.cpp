@@ -19,6 +19,7 @@ bool isTrain=false;//traffic signs
 bool TRAIN=false;//TL
 bool HORZ=false;//TL
 bool saveFlag=true;
+Mat re_src;//for traffic signs detection 
 IplImage *resize_TLR=cvCreateImage(Size(800,600),8,3);
 
 vector<Rect> found_TL;//the bounding box for traffic lights
@@ -287,9 +288,6 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 #endif
 	imageNoiseRem=noiseRemoval(imageSeg);
 	componentExtraction(imageSeg,resize_TLR,TLDSend,found_TL);
-	//cvNamedWindow("TL");
-	cvShowImage("TL",resize_TLR);
-	cvWaitKey(5);
 
 	cvReleaseImage(&imageSeg);
 	cvReleaseImage(&imageNoiseRem);
@@ -299,9 +297,9 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 {
 	vector<ShapeRecResult> shapeResult;
-	//Mat src(frame);
-	Mat re_src(frame);
-	//resize(src,re_src,Size(640,480));
+	Mat src(frame);
+	
+	resize(src,re_src,Size(640,480));
 	Mat bilateralImg;
 	bilateralFilter(re_src,bilateralImg,7,7*2,7/2);
 	int count=0;
@@ -615,11 +613,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 		}
 
 	}
-
 	shapeResult.clear();
-	//namedWindow("TSR");
-	//imshow("TSR",re_src);
-	//waitKey(5);
 }
 
 int main()
@@ -763,6 +757,7 @@ void openMP_MultiThreadVideo()
 	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
 	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
 	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\pt.avi");
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\20141115综合赛段行车记录仪\\PPG00001.MOV");
 	IplImage * frame,*copyFrame;
 	float connectResult[9]={0,0,0,0,0,0,0,0,0};
 	while(1)
@@ -774,9 +769,6 @@ void openMP_MultiThreadVideo()
 		frame=cvQueryFrame(cap);
 		if(!frame)break;
 		//MultiThread
-		namedWindow("TL");
-		//namedWindow("TSR");
-
 #if ISDEBUG_TL
 		cvNamedWindow("imgseg");
 #endif
@@ -802,6 +794,14 @@ void openMP_MultiThreadVideo()
 		TSRecognitionPerFrame(frame,TSRSend);
 		TLDetectionPerFrame(copyFrame,TLDSend);
 #endif
+		//show the detection  result of TL
+		cvNamedWindow("TL");
+		cvShowImage("TL",resize_TLR);
+		cvWaitKey(5);
+		//show the detection  result of TSR
+		namedWindow("TSR");
+		imshow("TSR",re_src);
+		waitKey(5);
 		//get the union result
 		for (int i=0;i<7;i++)
 		{
@@ -1150,8 +1150,6 @@ void openMP_MultiThreadCamera()
 		int start=cvGetTickCount();
 		if(!frame)break;
 		//MultiThread
-		//cvNamedWindow("TL");加上这两行代码，程序的图像经常就显示不出来了，难道是重复创建window的缘故？
-		//namedWindow("TSR");
 #if ISDEBUG_TL
 		cvNamedWindow("imgseg");
 #endif
@@ -1179,6 +1177,15 @@ void openMP_MultiThreadCamera()
 		TSRecognitionPerFrame(frame,TSRSend);
 		TLDetectionPerFrame(copyFrame,TLDSend);
 #endif
+		//show the detection  result of TL
+		cvNamedWindow("TL");
+		cvShowImage("TL",resize_TLR);
+		cvWaitKey(5);
+		//show the detection  result of TSR
+		namedWindow("TSR");
+		imshow("TSR",re_src);
+		waitKey(5);
+
 		cvReleaseImage(&frame);
 		//get the union result
 		for (int i=0;i<7;i++)
