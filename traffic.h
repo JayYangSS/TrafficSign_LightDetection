@@ -7,7 +7,7 @@
 #include <vector>
 #include <stdlib.h>
 
-
+#define OPENMP 1//是否使用OPENMP并行处理
 #define ISDEBUG_TL 0//调试时用来输出中间调试图像及信息(Traffic Light)
 #define ISDEBUG_TS 0//调试时用来输出中间调试图像及信息(Traffic Sign)
 #define SAVEVIDEO 1//是否保存视频

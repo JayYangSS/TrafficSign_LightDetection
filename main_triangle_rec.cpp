@@ -287,7 +287,7 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 #endif
 	imageNoiseRem=noiseRemoval(imageSeg);
 	componentExtraction(imageSeg,resize_TLR,TLDSend,found_TL);
-	cvNamedWindow("TL");
+	//cvNamedWindow("TL");
 	cvShowImage("TL",resize_TLR);
 	cvWaitKey(5);
 
@@ -299,9 +299,9 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 {
 	vector<ShapeRecResult> shapeResult;
-	Mat src(frame);
-	Mat re_src;
-	resize(src,re_src,Size(640,480));
+	//Mat src(frame);
+	Mat re_src(frame);
+	//resize(src,re_src,Size(640,480));
 	Mat bilateralImg;
 	bilateralFilter(re_src,bilateralImg,7,7*2,7/2);
 	int count=0;
@@ -617,9 +617,9 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 	}
 
 	shapeResult.clear();
-	namedWindow("TSR");
-	imshow("TSR",re_src);
-	waitKey(5);
+	//namedWindow("TSR");
+	//imshow("TSR",re_src);
+	//waitKey(5);
 }
 
 int main()
@@ -679,8 +679,8 @@ int main()
 	//cameraMultiThread();
 	//videoMultiThread();
 	//TLDetection();
-	//openMP_MultiThreadVideo();
-	openMP_MultiThreadCamera();
+	openMP_MultiThreadVideo();
+	//openMP_MultiThreadCamera();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -762,6 +762,7 @@ void openMP_MultiThreadVideo()
 {
 	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
 	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\pt.avi");
 	IplImage * frame,*copyFrame;
 	float connectResult[9]={0,0,0,0,0,0,0,0,0};
 	while(1)
@@ -773,15 +774,16 @@ void openMP_MultiThreadVideo()
 		frame=cvQueryFrame(cap);
 		if(!frame)break;
 		//MultiThread
-		cvNamedWindow("TL");
-		namedWindow("TSR");
+		namedWindow("TL");
+		//namedWindow("TSR");
+
 #if ISDEBUG_TL
 		cvNamedWindow("imgseg");
 #endif
 		//copyFrame=cvCloneImage(frame);
 		copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
 		cvCopy(frame,copyFrame);
-
+#if OPENMP
 #pragma omp parallel sections
 		{
 #pragma omp section
@@ -796,7 +798,10 @@ void openMP_MultiThreadVideo()
 				TLDetectionPerFrame(copyFrame,TLDSend);
 			}
 		}
-
+#else
+		TSRecognitionPerFrame(frame,TSRSend);
+		TLDetectionPerFrame(copyFrame,TLDSend);
+#endif
 		//get the union result
 		for (int i=0;i<7;i++)
 		{
@@ -1155,6 +1160,7 @@ void openMP_MultiThreadCamera()
 		cvResize(src_frame,frame);
 		cvCopy(frame,copyFrame);
 
+#if OPENMP
 #pragma omp parallel sections
 		{
 #pragma omp section
@@ -1169,6 +1175,10 @@ void openMP_MultiThreadCamera()
 				TLDetectionPerFrame(copyFrame,TLDSend);
 			}
 		}
+#else
+		TSRecognitionPerFrame(frame,TSRSend);
+		TLDetectionPerFrame(copyFrame,TLDSend);
+#endif
 		cvReleaseImage(&frame);
 		//get the union result
 		for (int i=0;i<7;i++)
