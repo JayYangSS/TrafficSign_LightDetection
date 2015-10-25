@@ -673,8 +673,8 @@ int main()
 	//cameraMultiThread();
 	//videoMultiThread();
 	//TLDetection();
-	openMP_MultiThreadVideo();
-	//openMP_MultiThreadCamera();
+	//openMP_MultiThreadVideo();
+	openMP_MultiThreadCamera();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -1138,6 +1138,9 @@ void openMP_MultiThreadCamera()
 {
 	Drogonfly_ImgRead p;
 	p.Camera_Intial();
+#if IS_SAVE
+	CvVideoWriter *writer = cvCreateVideoWriter("cameraCapture6.avi",CV_FOURCC('X','V','I','D'),10,Size(800,600),1);
+#endif
 
 	IplImage * src_frame,*copyFrame;
 	float connectResult[9]={0,0,0,0,0,0,0,0,0};
@@ -1185,7 +1188,9 @@ void openMP_MultiThreadCamera()
 		namedWindow("TSR");
 		imshow("TSR",re_src);
 		waitKey(5);
-
+#if IS_SAVE
+		cvWriteFrame(writer,frame);
+#endif
 		cvReleaseImage(&frame);
 		//get the union result
 		for (int i=0;i<7;i++)
@@ -1216,6 +1221,9 @@ void openMP_MultiThreadCamera()
 		if (c==27)
 		{
 			p.ClearBuffer();
+#if IS_SAVE
+			cvReleaseVideoWriter(&writer); 
+#endif
 			break;
 		}
 		
