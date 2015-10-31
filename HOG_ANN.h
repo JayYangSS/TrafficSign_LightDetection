@@ -12,11 +12,14 @@
 #include <iostream>
 //#include <time.h>
 #define IMG_NEW_DIM     40
+//for the Parking Sign
+#define RECT_SIGN_WIDTH  30
+#define RECT_SIGN_HEIGHT  50
 #define RESIZED_IMG_DIM     1764
 //number of classes
-#define TRIANGLE_CLASSES 4
-#define ROUNDRIM_CLASSES 3
-#define ROUNDBLUE_CLASSES 2
+#define TRIANGLE_CLASSES 3 //the number of triangle classes,include the negetive samples
+#define ROUNDRIM_CLASSES 3//the number of round rim classes,include the negetive samples
+#define RECTBLUE_CLASSES 2//the number of blue rect classes,include the negetive samples
 
 
 

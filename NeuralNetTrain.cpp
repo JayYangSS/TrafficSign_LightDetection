@@ -145,6 +145,4 @@ void NeuralNetTrain(string shufflePath,string Neural_output,PCA &pca,int trainin
 	nnetwork.write(storage,Neural_outputName.c_str());
 	cvReleaseFileStorage(&storage); 
 
-
-
 }

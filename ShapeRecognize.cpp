@@ -79,11 +79,13 @@ Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult)
 		// Convert to binary image using Canny
 		Mat edge;
 		Canny(src,edge,0,50,5);
-
+#if ISDEBUG_TS
+		imshow("edge",edge);
+		waitKey(5);
+#endif
 		//Find contours
 		vector<vector<Point>> contours;
 		findContours(edge.clone(), contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-
 		// The array for storing the approximation curve
 		std::vector<cv::Point> approx;
 
@@ -95,7 +97,7 @@ Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult)
 			
 			Rect rect=boundingRect(contours[i]);
 			//constraints of width-height ratio
-			bool RatioConstraint=(abs(1-(float)(rect.width)/((float)(rect.height)))<0.2);
+			bool RatioConstraint=(abs(1-(float)(rect.width)/((float)(rect.height)))<0.2)||(((float)rect.height/(float)rect.width<2)&&((float)rect.height/(float)rect.width>1));
 			if(!RatioConstraint)continue;
 			// Approximate contour with accuracy proportional to the contour perimeter
 			cv::approxPolyDP(cv::Mat(contours[i]), approx, cv::arcLength(cv::Mat(contours[i]), true) * 0.02, true);
@@ -132,7 +134,7 @@ Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult)
 			else if (vtc >= 4 && vtc <= 6)
 			{
 				// Get the cosines of all corners
-				std::vector<double> cos;
+				std::vector<double> cos; 
 				for (int j = 2; j < vtc+1; j++)
 					cos.push_back(angle(approx[j%vtc], approx[j-2], approx[j-1]));
 
@@ -155,16 +157,6 @@ Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult)
 					shapeResult.push_back(tmp);
 				}
 					
-				if (vtc <= 6 && mincos >= -0.8 && maxcos <= -0.45)
-				{
-					setLabel(dst, "Octagon",rect);
-					tmp.box=rect;
-					tmp.shape=HEXA;//3表示六边形
-					Mat cutMat=src(rect);
-					tmp.color=RecColorInBox(cutMat);
-					shapeResult.push_back(tmp);
-				}
-					
 			}
 			else
 			{
@@ -178,20 +170,11 @@ Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult)
 				{
 					setLabel(dst, "CIR", rect);
 					tmp.box=rect;
-					tmp.shape=CIRCLE;//4表示矩形
+					tmp.shape=CIRCLE;
 					Mat cutMat=src(rect);
 					tmp.color=RecColorInBox(cutMat);
 					shapeResult.push_back(tmp);
-				}
-				/*vector<Vec3f> circles;
-				Mat tmp=src(rect);
-				HoughCircles( src, circles, CV_HOUGH_GRADIENT, 1, tmp.rows/8, 200, 100, 0, 0 );
-				if (circles.size()>0)
-				{
-					setLabel(dst, "CIR", rect);
-					boudingBox.push_back(rect);
-				}*/
-					
+				}				
 			}
 		
 	    }
