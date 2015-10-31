@@ -276,14 +276,16 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 	cvResize(frame,resize_TLR);
 
 	imageSeg = colorSegmentationTL(resize_TLR);
+	imageNoiseRem=noiseRemoval(imageSeg);
 #if ISDEBUG_TL
 	cvNamedWindow("imgseg");
 	cvShowImage("imgseg",imageSeg);
 	cvWaitKey(5);
+	cvShowImage("imageNoiseRem",imageNoiseRem);
+	cvWaitKey(5);
 #endif
-	imageNoiseRem=noiseRemoval(imageSeg);
-	componentExtraction(imageSeg,resize_TLR,TLDSend,found_TL);
-
+	//componentExtraction(imageNoiseRem,resize_TLR,TLDSend,found_TL);
+	componentExtractionTL(imageNoiseRem,resize_TLR,TLDSend);
 	cvReleaseImage(&imageSeg);
 	cvReleaseImage(&imageNoiseRem);
 	cvReleaseImage(&frame);
@@ -628,7 +630,7 @@ int main()
 	system("pause");
 }
 
-
+/*
 void TLDetection()
 {
 	IplImage *frame = NULL,*imageSeg=NULL,*imageNoiseRem =NULL;
@@ -697,18 +699,16 @@ void TLDetection()
 	cvReleaseCapture(&capture);
 	cvReleaseImage(&resize_tmp);
 	cvReleaseVideoWriter(&writer);
-}
+}*/
 
 
 
 void openMP_MultiThreadVideo()
 {
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\Video_20151026144346.avi");
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\Video_20151027102345.avi");
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\2014.11.16\\2_clip.mp4");
 	IplImage * frame,*copyFrame;
 	float connectResult[9]={0,0,0,0,0,0,0,0,0};
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\Video_20151026111218.avi");
+	
 	while(1)
 	{
 		float TSRSend[7]={0,0,0,0,0,0,0};//store the traffic signs recognition result
@@ -721,7 +721,6 @@ void openMP_MultiThreadVideo()
 #if ISDEBUG_TL
 		cvNamedWindow("imgseg");
 #endif
-		//copyFrame=cvCloneImage(frame);
 		copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
 		cvCopy(frame,copyFrame);
 #if OPENMP
@@ -787,7 +786,7 @@ void openMP_MultiThreadVideo()
 	cvDestroyAllWindows();
 }
 
-
+/*
 void test_RBYcolorMerge_Video()
 {
 	VideoCapture capture; 
@@ -1180,4 +1179,4 @@ void openMP_MultiThreadCamera()
 		cout<<"Ê±¼ä£º"<<time<<endl;
 	}
 	cvDestroyAllWindows();
-}
+}*/

@@ -3,37 +3,40 @@
 
 bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2)//p1为红灯，p2为绿灯
 {
+	
+	/*int iWidth = inputImage->width;
+	int iHeight = inputImage->height;
+	int iWidthStep = inputImage->widthStep; 
+	IplImage* imageGrayScale = cvCreateImage(cvSize(iWidth,iHeight),IPL_DEPTH_8U,1);
+	if(!imageGrayScale)
+		exit(EXIT_FAILURE);
+	cvCvtColor(srcImage,imageGrayScale,CV_BGR2GRAY);*/
+	
+	
+	
 	bool returnStatus = false;
 	int iWidth = inputImage->width;
 	int iHeight = inputImage->height;
 	int iWidthStep = inputImage->widthStep;
-	unsigned char* pImageData = (unsigned char*)inputImage->imageData;
 	int iSrcWidthStep = srcImage->widthStep;
-	unsigned char* pSrcImageData = (unsigned char*)srcImage->imageData;
+
 	//thresholding for graylevel differences between seedpoints and its neibours
-	 const int grayThresholding = 80;//70
-	 const int bgrThresholding =120;
-	 const int whiteThresholding = 220;
-	 const int numThresholding =  70;//80
+	 const int grayThresholding =80;//70
+	 const int numThresholding =  50;//80
 
 	 int iRectangleWidth;
 	 int iRectangleHeight;
-#if 1
+
 	 iRectangleWidth = (iRect.width+iRect.height)/2-1;
 	 iRectangleHeight = iRectangleWidth*3;
-#endif
-#if 0
-	 iRectangleWidth = min(iRect.width,iRect.height);
-	 iRectangleHeight = iRectangleWidth*3;
-#endif
 
-	int iRectangleStartX,iRectangleEndX;
-	int iRectangleStartY,iRectangleEndY;
+	int iRectangleStartX=0,iRectangleEndX=0;
+	int iRectangleStartY=0,iRectangleEndY=0;
 
 	int iDrawRectWidth = (iRect.width+iRect.height)/2 + 6;
 	int iDrawRectHeight = 3*(iDrawRectWidth-4)+6;
-	int iDrawRectX1, iDrawRectY1;
-	int iDrawRectX2, iDrawRectY2;
+	int iDrawRectX1=0, iDrawRectY1=0;
+	int iDrawRectX2=0, iDrawRectY2=0;
 
 	if(iColor==RED_PIXEL_LABEL){
 		//iRectangleStartY = iRect.y+1;
@@ -62,7 +65,6 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 		return returnStatus;
 
 	int sum=0;
-	int white=0;
 	int gray=0;
 	int bValue=0,gValue=0,rValue=0;
 	int bgrMax=0,bgrMin=0;
@@ -82,9 +84,9 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	}	
 
 
-	int ratio = sum*100/((iRectangleWidth+1)*(iRectangleHeight*2/3+1));//矩形框中黑色像素所占比例
+	int ratio = (float)sum*100/(float)((iRectangleWidth+1)*((float)iRectangleHeight*2/3+1));//矩形框中黑色像素所占比例
 
-	if(ratio>=numThresholding)
+	if(ratio>=numThresholding&&BlackAroundLight(srcImage,iRect))
 		returnStatus = true;
 
 	//若检测出的矩形框符合条件，则在原始图像上画出矩形标示框

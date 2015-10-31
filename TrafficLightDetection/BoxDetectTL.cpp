@@ -1,19 +1,19 @@
 #include"std_tlr.h"
 extern Size Win_vertical,block_vertical,blockStride_vertical,cell_vertical;
 
-bool BoxDetectTL(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered,bool HORZ)
+bool BoxDetectTL(Mat src_test,HOGDescriptor &myHOG ,bool HORZ)
 {
 	vector<Rect> found;
 	if(HORZ)
 		myHOG.detectMultiScale(src_test, found,-0.8,Size(4,4), Size(0,0), 1.05, 2);//改成-0.75后，对10.23号采集的横向交通灯检测效果好
 	                                                                                //在release模式下，第四个参数使用Size(5,5)没有问题，debug模式下不行，改成Size(4,4)才好使
 	else//竖直检测使用
-		myHOG.detectMultiScale(src_test, found,0.5,Size(1,1), Size(0,0),1.05, 2);//对图片进行多尺度行人检测
+		myHOG.detectMultiScale(src_test, found,1,Size(1,1), Size(0,0),1.05, 2);//对图片进行多尺度行人检测
 #if ISDEBUG_TL
     cout<<"找到的矩形框个数："<<found.size()<<endl;
 #endif
   //找出所有没有嵌套的矩形框r,并放入found_filtered中,如果有嵌套的话,则取外面最大的那个矩形框放入found_filtered中
-  for(int i=0; i < found.size(); i++)
+	for(int i=0; i < found.size(); i++)
   {
     Rect r = found[i];
     int j=0;
@@ -21,9 +21,10 @@ bool BoxDetectTL(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered,
       if(j != i && (r & found[j]) == r)
         break;
     if( j == found.size())
-      found_filtered.push_back(r);
+      return true;
   }
-
+	return false;
+ }
 
  
   /*
@@ -42,6 +43,3 @@ bool BoxDetectTL(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered,
 
 	imshow("src",src_test);
 	waitKey(5);//注意：imshow之后必须加waitKey，否则无法显示图像*/
-
-	return !found_filtered.empty();
-}

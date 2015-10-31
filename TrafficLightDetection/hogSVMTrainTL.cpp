@@ -131,7 +131,7 @@ void hogSVMTrainTL(HOGDescriptor &myHOG,bool TRAIN,bool HORZ)
     //SVM参数：SVM类型为C_SVC；线性核函数；松弛因子C=0.01
     CvSVMParams param(CvSVM::C_SVC, CvSVM::LINEAR, 0, 1, 0, 0.01, 0, 0, 0, criteria);
     cout<<"开始训练SVM分类器"<<endl;
-    svm.train(sampleFeatureMat, sampleLabelMat, Mat(), Mat(), param);//训练分类器
+    svm.train_auto(sampleFeatureMat, sampleLabelMat, Mat(), Mat(), param);//训练分类器
     cout<<"训练完成"<<endl;
     svm.save("src\\TrafficLightDetection\\SVM_HOG_Benchmark.xml");//将训练好的SVM模型保存为xml文件
 	//svm.save("SVM_HOG_10_20.xml");

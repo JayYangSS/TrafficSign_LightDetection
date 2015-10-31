@@ -58,18 +58,17 @@ IplImage* colorSegmentationTL(IplImage* inputImage)
 	}
 #endif
 
-
 #if(SPECIAL_CASE)
 	for(int j=0; j<iHeight; j++){
 		in = (unsigned char*)inputImage->imageData + j*iInWidthStep;
 		out = (unsigned char*)imageSeg->imageData + j*iOutWidthStep;
-		if(j<=ROIHeight)
+		if(j<=ROIHeight){
 			for(int i=0; i<iWidth; i++){
 				colorB = in[3*i];
 				colorG = in[3*i+1];
 				colorR = in[3*i+2];
 				rgb2hsi(colorR,colorG,colorB,colorH,colorS,colorI);
-			    
+
 				//if( colorR<=220 && (colorH>=140 && colorH<=195) && (colorS>=15 && colorS<=70) && colorI>=110 )
 				if( colorG>=70 && (colorH>=150 && colorH<=200) && (colorS>=13 && colorS<=100) && (colorI<=240&&colorI>=170) )
 					out[i]=GREEN_PIXEL_LABEL;
@@ -79,9 +78,14 @@ IplImage* colorSegmentationTL(IplImage* inputImage)
 				else
 					out[i]=NON_BLOB_PIXEL_LABEL;
 			}
+		}else{
+			for(int i=0; i<iWidth; i++)
+			{
+				out[i]=NON_BLOB_PIXEL_LABEL;
+			}		
 	}
 #endif
-
+	}
 	return imageSeg;
 }
 

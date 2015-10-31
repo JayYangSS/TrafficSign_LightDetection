@@ -26,7 +26,7 @@ bool RegionGrowB(
 #endif
 
 
-bool BlackAroundLight(IplImage* srcImg,CvRect	iRect,vector<Rect> &found_filtered)
+bool BlackAroundLight(IplImage* srcImg,CvRect	iRect)
 {
 	bool returnStatus = false;
 	int iWidth = srcImg->width,topX=iRect.x;
@@ -60,8 +60,8 @@ bool BlackAroundLight(IplImage* srcImg,CvRect	iRect,vector<Rect> &found_filtered
 
 	cvResetImageROI(srcImg);//这一句少了就出错了啊！！
 	if(HORZ)
-		flag=BoxDetectTL(SVMROI,myHOG_horz,found_filtered,HORZ);
-	flag=BoxDetectTL(SVMROI,myHOG_vertical,found_filtered,HORZ);
+		flag=BoxDetectTL(SVMROI,myHOG_horz,HORZ);
+	flag=BoxDetectTL(SVMROI,myHOG_vertical,HORZ);
 	//cvReleaseImage(&srcImg);
 	return flag;
 }
@@ -103,7 +103,7 @@ bool regionGrowFiltering(IplImage* inputImage,IplImage*srcImg,CvRect iRect,CvRec
 	//相差小于thresholding（22）的聚集区域找出
 	if( RegionGrowB2(seedX,seedY,pImageData,iWidth,iHeight,flag,thresholding,oRect)){
 		//if(oRect.width<=iRect.width*2 && oRect.height<=iRect.height*3/2)//此处参数可以调整
-		if(oRect.width<=iRect.width*3 && oRect.height<=iRect.height*3&&BlackAroundLight(srcImg,oRect,found_filtered))//此处参数可以调整
+		if(oRect.width<=iRect.width*3 && oRect.height<=iRect.height*3&&BlackAroundLight(srcImg,oRect))//此处参数可以调整
 			returnStatus = true;
 	}
 
