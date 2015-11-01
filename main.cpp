@@ -707,8 +707,9 @@ void openMP_MultiThreadVideo()
 {
 	IplImage * frame,*copyFrame;
 	float connectResult[9]={0,0,0,0,0,0,0,0,0};
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\Video_20151026111218.avi");
-	
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\Video_20151027102345.avi");
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\pt.avi");
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\hefei data\\TL\\020x.avi");
 	while(1)
 	{
 		float TSRSend[7]={0,0,0,0,0,0,0};//store the traffic signs recognition result
@@ -719,7 +720,7 @@ void openMP_MultiThreadVideo()
 		if(!frame)break;
 		//MultiThread
 #if ISDEBUG_TL
-		cvNamedWindow("imgseg");
+		//cvNamedWindow("imgseg");
 #endif
 		copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
 		cvCopy(frame,copyFrame);
@@ -750,6 +751,13 @@ void openMP_MultiThreadVideo()
 		namedWindow("TSR");
 		imshow("TSR",re_src);
 		waitKey(5);
+
+#if ISDEBUG_TL
+		ofstream outfile;
+		outfile.open(debugTLPath,ios::app);
+		outfile<<"================frame=================="<<endl;
+		outfile.close();
+#endif
 		//get the union result
 		for (int i=0;i<7;i++)
 		{

@@ -35,6 +35,8 @@
 
 
 const float ROI_HeightRatio_TL=0.6;
+const string debugTLPath="D:\\JY\\TrafficSignDetection\\TrafficSignDetection\\debugInfo\\TLdebug.txt";
+
 void rgb2hsi(int red, int green, int blue, int& hue, int& saturation, int& intensity );
 //void componentExtraction(IplImage* inputImage, IplImage* srcImage,float* TLDSend,vector<Rect> &found_filtered);
 void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSend);
