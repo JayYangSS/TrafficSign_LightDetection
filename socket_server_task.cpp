@@ -1,6 +1,6 @@
 #include "socket_server_task.h"
 /* 常量 */
-#define DEFAULT_PORT "10004" // 端口
+#define DEFAULT_PORT "10005" // 端口
 #define MAX_REQUEST 1024 // 接收数据的缓存大小
 #define BUF_SIZE 4096 // 发送数据的缓存大小
 /*发送标志位*/

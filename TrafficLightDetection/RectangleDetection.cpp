@@ -63,10 +63,6 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 		iDrawRectY1 = iRect.y-iDrawRectHeight/3*2;
 	}
 
-	//iRectangleEndY = iRectangleStartY + iRectangleHeight;
-	//iRectangleStartX = iRect.x+1;
-	//iRectangleEndX = iRectangleStartX + iRectangleWidth;
-
 	iDrawRectY2 = iDrawRectY1 + iDrawRectHeight;
 	iDrawRectX1 = iRect.x-3;
 	iDrawRectX2 = iDrawRectX1 + iDrawRectWidth;
@@ -107,7 +103,18 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	outfile.close();
 #endif
 
-	if(ratio>=RatioThreshold)
+#if ISDEBUG_TL
+	Mat grayMat(imageGrayScale);
+	Rect drawRect;
+	drawRect.x=iDrawRectX1;
+	drawRect.y=iDrawRectY1;
+	drawRect.width=iDrawRectX2-iDrawRectX1;
+	drawRect.height=iDrawRectY2-iDrawRectY1;
+	Mat tmpMat=grayMat(drawRect);
+	isLighInBox(tmpMat);
+#endif
+
+	if(ratio>=RatioThreshold&&BlackAroundLight(srcImage,iRect))
 		returnStatus = true;
 
 	//若检测出的矩形框符合条件，则在原始图像上画出矩形标示框
@@ -126,14 +133,7 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 		}
 	}
 
-	Mat grayMat(imageGrayScale);
-	Rect drawRect;
-	drawRect.x=iDrawRectX1;
-	drawRect.y=iDrawRectY1;
-	drawRect.width=iDrawRectX2-iDrawRectX1;
-	drawRect.height=iDrawRectY2-iDrawRectY1;
-	Mat tmpMat=grayMat(drawRect);
-	isLighInBox(tmpMat);
+
 
 
 	cvReleaseImage(&imageGrayScale);

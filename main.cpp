@@ -36,7 +36,6 @@ void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RectBlue,CvANN_MLP &nnetwork
 void TLDetection();
 void cameraMultiThread();
 void videoMultiThread();
-void test_RBYcolorMerge_Video();
 void openMP_MultiThreadVideo();
 void openMP_MultiThreadCamera();
 
@@ -630,86 +629,91 @@ int main()
 	system("pause");
 }
 
-/*
-void TLDetection()
+
+//用来寻找颜色各通道的范围，方便设置阈值
+void findColorRange()
 {
-	IplImage *frame = NULL,*imageSeg=NULL,*imageNoiseRem =NULL;
-	IplImage *resize_tmp=cvCreateImage(Size(800,600),8,3);
-	CvCapture *capture=NULL;
-	CvVideoWriter *writer=NULL;
-	vector<Rect> found_filtered;
-	float TLDSend[2]={0,0};
-
-	capture = cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
-	int frameFPS=cvGetCaptureProperty(capture,CV_CAP_PROP_FPS);
-	int frameNUM=cvGetCaptureProperty(capture,CV_CAP_PROP_FRAME_COUNT);
-	char Info[200];
-	cvNamedWindow("resize_frame");
-
-	while (1)
-	{
-		CvFont font; 
-		cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX, .5, .5, 0, 1, 8);
-
-		int Start=cvGetTickCount();
-		frame = cvQueryFrame(capture);
-		if(!frame)break;
+	//测试使用，待删除
+	Mat testGreen=imread("D:\\JY\\JY_TrainingSamples\\color\\green\\4.jpg");
+	Mat Hsv,HLS,gray;
+	Mat HSVChannels[3],HLSChannels[3],BGRChannels[3];
+	cvtColor(testGreen,Hsv,CV_BGR2HSV);
+	cvtColor(testGreen,HLS,CV_BGR2HLS);
+	cvtColor(testGreen,gray,CV_BGR2GRAY);
 
 
-		found_filtered.clear();
-		cvResize(frame,resize_tmp);
-		imageSeg = colorSegmentationTL(resize_tmp);
+	split(Hsv,HSVChannels);
+	split(HLS,HLSChannels);
+	split(testGreen,BGRChannels);
 
-#if ISDEBUG_TL
-		cvShowImage("imgseg",imageSeg);
-		cvWaitKey(5);
-#endif
-		imageNoiseRem=noiseRemoval(imageSeg);
-		componentExtraction(imageSeg,resize_tmp,TLDSend,found_filtered);
+	double max_H,min_H,max_S,min_S,max_V,min_V;
+	double max_H1,min_H1,max_S1,min_S1,max_L1,min_L1;
+	double max_R,min_R,max_G,min_G,max_B,min_B;
+	double min_gray,max_gray;
 
+	minMaxLoc(HSVChannels[0],&min_H,&max_H);
+	minMaxLoc(HSVChannels[1],&min_S,&max_S);
+	minMaxLoc(HSVChannels[2],&min_V,&max_V);
 
-		//socket
-		if (!gb_filled)
-		{
-			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();
-			if(TLDSend[0]>0)//red light
-				*(float *)CV_MAT_ELEM_PTR(*g_mat, 1, 0) = 9.0;
-			if(TLDSend[1]>0)//greed light
-				*(float *)CV_MAT_ELEM_PTR(*g_mat, 1, 0) = 10.0;
-			gb_filled = true;
-		}
+	minMaxLoc(HLSChannels[0],&min_H1,&max_H1);
+	minMaxLoc(HLSChannels[1],&min_L1,&max_L1);
+	minMaxLoc(HLSChannels[2],&min_S1,&max_S1);
 
-		int currentFrame=cvGetCaptureProperty(capture,CV_CAP_PROP_POS_FRAMES);
-		sprintf(Info,"Total frames:%d,current frame:%d",frameNUM,currentFrame);
-		cvPutText(resize_tmp,Info,Point(25,17),&font,Scalar(255,255,255));
-		cvShowImage("resize_frame",resize_tmp);
-		cvWaitKey(5);
+	minMaxLoc(BGRChannels[0],&min_B,&max_B);
+	minMaxLoc(BGRChannels[1],&min_G,&max_G);
+	minMaxLoc(BGRChannels[2],&min_R,&max_R);
 
-		//save video
-		cvWriteFrame(writer,resize_tmp);
-		cvReleaseImage(&imageSeg);
-		cvReleaseImage(&imageNoiseRem);
-		cout << "Frame Grabbed." << endl;
-		int End=cvGetTickCount();
-		float time=(float)(End-Start)/(cvGetTickFrequency()*1000000);
-		cout<<"Time£º"<<time<<endl;
-	}
+	minMaxLoc(gray,&min_gray,&max_gray);
 
-	cvDestroyAllWindows();
-	cvReleaseCapture(&capture);
-	cvReleaseImage(&resize_tmp);
-	cvReleaseVideoWriter(&writer);
-}*/
+	ofstream outfile;
+	outfile.open("D:\\JY\\TrafficSignDetection\\TrafficSignDetection\\debugInfo\\GreenTestdebug.txt",ios::app);
+	outfile<<"maxH:"<<max_H<<endl;
+	outfile<<"minH:"<<min_H<<endl;
+	outfile<<"maxS:"<<max_S<<endl;
+	outfile<<"minS:"<<min_S<<endl;
+	outfile<<"maxV:"<<max_V<<endl;
+	outfile<<"minV:"<<min_V<<endl;
+	outfile<<""<<endl;
+	outfile<<"maxH1:"<<max_H1<<endl;
+	outfile<<"minH1:"<<min_H1<<endl;
+	outfile<<"maxL1:"<<max_L1<<endl;
+	outfile<<"minL1:"<<min_L1<<endl;
+	outfile<<"maxS1:"<<max_S1<<endl;
+	outfile<<"minS1:"<<min_S1<<endl;
+	outfile<<""<<endl;
+	outfile<<"maxB:"<<max_B<<endl;
+	outfile<<"minB:"<<min_B<<endl;
+	outfile<<"maxG:"<<max_G<<endl;
+	outfile<<"minG:"<<min_G<<endl;
+	outfile<<"maxR:"<<max_R<<endl;
+	outfile<<"minR:"<<min_R<<endl;
+	outfile<<""<<endl;
+	outfile<<"min_gray:"<<min_gray<<endl;
+	outfile<<"max_gray:"<<max_gray<<endl;
+	outfile.close();
 
+}
 
 
 void openMP_MultiThreadVideo()
 {
+	bool saveFlag=false;
 	IplImage * frame,*copyFrame;
-	float connectResult[9]={0,0,0,0,0,0,0,0,0};
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\Video_20151027102345.avi");
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\pt.avi");
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\hefei data\\TL\\020x.avi");
+	float connectResult[10]={0,0,0,0,0,0,0,0,0,0};
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\good5.avi");
+	float startTime=1000*(float)getTickCount()/getTickFrequency();
+	CvVideoWriter * writer=NULL;
+	//findColorRange();
+
+	if (saveFlag)
+	{
+		SYSTEMTIME stTime;
+		GetLocalTime(&stTime);
+		char *videoPath = new char[100];// "D:/123.dat";
+		sprintf(videoPath, "ResultVideo//Video_%04d%02d%02d%02d%02d%02d.avi", stTime.wYear, stTime.wMonth, stTime.wDay, stTime.wHour, stTime.wMinute, stTime.wSecond);
+		writer=cvCreateVideoWriter(videoPath,CV_FOURCC('X', 'V', 'I', 'D'), 20, cvGetSize(resize_TLR), 1);
+	}
+
 	while(1)
 	{
 		float TSRSend[7]={0,0,0,0,0,0,0};//store the traffic signs recognition result
@@ -752,6 +756,14 @@ void openMP_MultiThreadVideo()
 		imshow("TSR",re_src);
 		waitKey(5);
 
+
+		if (saveFlag)
+		{
+			cvWriteFrame(writer,resize_TLR);
+			waitKey(2);
+		}
+
+
 #if ISDEBUG_TL
 		ofstream outfile;
 		outfile.open(debugTLPath,ios::app);
@@ -776,7 +788,7 @@ void openMP_MultiThreadVideo()
 		//socket
 		if (!gb_filled)
 		{
-			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();		
+			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (int)(1000*(float)getTickCount()/getTickFrequency()-startTime)%1000;//time stamp,防止溢出		
 			//put the result into the g_mat to transmit
 			for (int i=1;i<=9;i++)
 				*(float *)CV_MAT_ELEM_PTR(*g_mat, i, 0)=connectResult[i-1];
@@ -784,310 +796,24 @@ void openMP_MultiThreadVideo()
 		}
 
 		char c=waitKey(5);
-		if (c==27)break;
+		if (c==27)
+		{
+			cvReleaseCapture(&cap);
+			cvReleaseImage(&resize_TLR);
+			cvDestroyAllWindows();
+			if (saveFlag)cvReleaseVideoWriter(&writer);
+			break;
+		}
 
 		int end=cvGetTickCount();
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
-		cout<<"Ê±¼ä£º"<<time<<endl;
+		cout<<"process time:"<<time<<endl;
 	}
+	if (saveFlag)cvReleaseVideoWriter(&writer);
 	cvReleaseCapture(&cap);
 	cvDestroyAllWindows();
 }
 
-/*
-void test_RBYcolorMerge_Video()
-{
-	VideoCapture capture; 
-	vector<Rect> boundingBox;
-	vector<ShapeRecResult> shapeResult;
-	Mat src,re_src,thresh;
-	Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};
-	//kalman tracker
-	vector<Point2d> centers;
-	vector<Point2d> storePredictCenters;
-	Rect searchRegion;
-	//ÂË²¨ÈÝÆ÷
-	deque<float> signFilters[7];
-
-	//process every frame
-	capture.open("D:\\JY\\JY_TrainingSamples\\2014.11.16\\2_clip.mp4");
-	while(capture.read(src))
-	{
-		float TSRSend[7]={0,0,0,0,0,0,0};
-		bool TSR_flag[7]={false,false,false,false,false,false,false};
-		int start=cvGetTickCount();
-		resize(src,re_src,Size(640,480));
-		Mat re_src1;
-		//GaussianBlur(re_src,re_src1,Size(5,5),0,0);
-		bilateralFilter(re_src,re_src1,7,7*2,7/2);
-		imshow("gaussion",re_src1);
-		waitKey(5);
-		Mat ihls_image = convert_rgb_to_ihls(re_src1);
-		Mat nhs_image=convert_ihls_to_seg(ihls_image);
-		imshow("seg",nhs_image);
-		waitKey(5);
-		Mat noiseremove;
-		int erosion_size=1;
-		int eroionType=MORPH_CROSS;
-		Mat element = getStructuringElement( eroionType,Size( 2*erosion_size + 1, 2*erosion_size+1 ),Point( erosion_size, erosion_size ) );
-		erode( nhs_image, noiseremove, element);
-		imshow("morph",noiseremove);
-		waitKey(2);
-	
-
-		Mat labeledImg=ShapeRecognize(noiseremove,shapeResult);
-		imshow("labeledImg",labeledImg);
-		waitKey(5);
-		for (int i=0;i<shapeResult.size();i++)
-		{
-			Rect boundingBox=shapeResult[i].box;
-			Point leftup(boundingBox.x,boundingBox.y);
-			Point rightdown(boundingBox.x+boundingBox.width,boundingBox.y+boundingBox.height);
-			rectangle(re_src,leftup,rightdown,colorMode[2],2);
-			Mat recognizeMat=re_src(boundingBox);//cut the traffic signs
-			int count=0;
-			deque<float>::iterator it;
-
-			//for different color, set different neural network
-			if(shapeResult[i].shape==TRIANGLE&&shapeResult[i].color==Y_VALUE)//yellow
-			{
-				int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
-				//set the recognition result to the image
-				switch(result)
-				{
-				case 1:
-					setLabel(re_src,"plus",boundingBox);
-					//TSRSend[0]=1.0;break;
-					signFilters[0].push_back(1.0);
-					if (signFilters[0].size()>5)
-						signFilters[0].pop_front();
-					TSR_flag[0]=true;
-					it=signFilters[0].begin();
-					while (it<signFilters[0].end())
-					{
-						if(*it==1.0)count++;
-						it++;
-					}
-					if((float)(count)/(float)signFilters[0].size()>=0.4)
-					{
-						TSRSend[0]=1.0;
-						//cout<<"detected"<<endl;
-					}
-					else
-					{
-						TSRSend[0]=0.0;
-						//cout<<"No detected"<<endl;
-					}
-					count=0;
-					break;	
-
-				case 2:
-					setLabel(re_src,"man",boundingBox);
-					//TSRSend[1]=2.0;break;
-					signFilters[1].push_back(2.0);
-					if (signFilters[1].size()>5)
-						signFilters[1].pop_front();
-					TSR_flag[1]=true;
-					it=signFilters[1].begin();
-					while (it<signFilters[1].end())
-					{
-						if(*it==2.0)count++;
-						it++;
-					}
-					if((float)(count)/(float)signFilters[1].size()>=0.4)
-					{
-						TSRSend[1]=2.0;
-						//cout<<"detected"<<endl;
-					}
-					else
-					{
-						TSRSend[1]=0.0;
-						//cout<<"No detected"<<endl;
-					}
-					count=0;
-					break;	
-
-				case 3:
-					setLabel(re_src,"slow",boundingBox);
-					//TSRSend[2]=3.0;break;
-					signFilters[2].push_back(3.0);
-					if (signFilters[2].size()>5)
-						signFilters[2].pop_front();
-					TSR_flag[2]=true;
-					it=signFilters[2].begin();
-					while (it<signFilters[2].end())
-					{
-						if(*it==3.0)count++;
-						it++;
-					}
-					if((float)(count)/(float)signFilters[2].size()>=0.4)
-					{
-						TSRSend[2]=3.0;
-						//cout<<"detected"<<endl;
-					}
-					else
-					{
-						TSRSend[2]=0.0;
-						//cout<<"No detected"<<endl;
-					}
-					count=0;
-					break;	
-				case 4:
-					setLabel(re_src,"work",boundingBox);
-					break;
-				default:
-					break;
-				}
-			}
-			else if(shapeResult[i].shape==CIRCLE&&shapeResult[i].color==B_VALUE)//circle
-			{
-				int result=Recognize(nnetwork_RectBlue,pca_RectBlue,recognizeMat,RECTBLUE_CLASSES);
-				//set the recognition result to the image
-				switch(result)
-				{
-				case 1:
-					setLabel(re_src,"car",boundingBox);
-					//TSRSend[3]=4.0;break;
-					signFilters[3].push_back(4.0);
-					if (signFilters[3].size()>5)
-						signFilters[3].pop_front();
-					TSR_flag[3]=true;
-					it=signFilters[3].begin();
-					while (it<signFilters[3].end())
-					{
-						if(*it==4.0)count++;
-						it++;
-					}
-					if((float)(count)/(float)signFilters[3].size()>=0.4)
-					{
-						TSRSend[3]=4.0;
-						//cout<<"detected"<<endl;
-					}
-					else
-					{
-						TSRSend[3]=0.0;
-						//cout<<"No detected"<<endl;
-					}
-					count=0;
-					break;	
-
-				case 2:
-					setLabel(re_src,"bike",boundingBox);
-					//TSRSend[4]=5.0;break;
-					signFilters[4].push_back(5.0);
-					if (signFilters[4].size()>5)
-						signFilters[4].pop_front();
-					TSR_flag[4]=true;
-					it=signFilters[4].begin();
-					while (it<signFilters[4].end())
-					{
-						if(*it==5.0)count++;
-						it++;
-					}
-					if((float)(count)/(float)signFilters[4].size()>=0.4)
-					{
-						TSRSend[4]=5.0;
-						//cout<<"detected"<<endl;
-					}
-					else
-					{
-						TSRSend[4]=0.0;
-						//cout<<"No detected"<<endl;
-					}
-					count=0;
-					break;	
-
-				default:
-					break;
-				}
-			}
-
-		else{
-				int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
-				//set the recognition result to the image
-				
-				switch(result)
-				{
-				case 1:
-					setLabel(re_src,"NoSound",boundingBox);
-					//TSRSend[5]=6.0;break;
-					signFilters[5].push_back(6.0);
-					if (signFilters[5].size()>5)
-						signFilters[5].pop_front();
-					TSR_flag[5]=true;
-					it=signFilters[5].begin();
-					while (it<signFilters[5].end())
-					{
-						if(*it==6.0)count++;
-						it++;
-					}
-					if((float)(count)/(float)signFilters[5].size()>=0.4)
-					{
-						TSRSend[5]=6.0;
-						//cout<<"detected"<<endl;
-					}
-					else
-					{
-						TSRSend[5]=0.0;
-						//cout<<"No detected"<<endl;
-					}
-					count=0;
-					break;	
-
-				case 2:
-					setLabel(re_src,"30",boundingBox);
-					signFilters[6].push_back(7.0);
-					if (signFilters[6].size()>5)
-						signFilters[6].pop_front();
-					TSR_flag[6]=true;
-					it=signFilters[6].begin();
-					while (it<signFilters[6].end())
-					{
-						if(*it==7.0)count++;
-						it++;
-					}
-					if((float)(count)/(float)signFilters[6].size()>=0.4)
-					{
-						TSRSend[6]=7.0;
-						//cout<<"detected"<<endl;
-					}
-					else
-					{
-						TSRSend[6]=0.0;
-						//cout<<"No detected"<<endl;
-					}
-					count=0;
-					break;	
-					//TSRSend=7.0;break;
-				case 3:
-					setLabel(re_src,"stop",boundingBox);
-					break;
-				default:
-					break;
-				}
-			}
-			
-		}
-
-		for (int i=0;i<=6;i++)
-		{
-			if(!TSR_flag)
-			{
-				signFilters[i].push_back(0);
-				if (signFilters[i].size()>5)
-					signFilters[i].pop_front();
-			}
-			cout<<TSRSend[i]<<" ";
-		}
-
-		int end=cvGetTickCount();//²âÊÔ·¢ÏÖÑÕÉ«·Ö¸îºóºÏÔÚÒ»ÕÅÍ¼ÉÏËÙ¶È±ä¿ì
-		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
-		cout<<"  time:"<<time<<endl;
-		imshow("re_src",re_src);
-		waitKey(5);
-		//shapeResult.clear();
-	}	
-}
 
 void openMP_MultiThreadCamera()
 {
@@ -1099,6 +825,7 @@ void openMP_MultiThreadCamera()
 
 	IplImage * src_frame,*copyFrame;
 	float connectResult[9]={0,0,0,0,0,0,0,0,0};
+	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	while(1)
 	{
 		src_frame=p.Camera2IplImage();
@@ -1165,7 +892,7 @@ void openMP_MultiThreadCamera()
 		//socket
 		if (!gb_filled)
 		{
-			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (float)getTickCount();		
+			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (int)(1000*(float)getTickCount()/getTickFrequency()-startTime)%1000;//time stamp,防止溢出			
 			//put the result into the g_mat to transmit
 			for (int i=1;i<=9;i++)
 				*(float *)CV_MAT_ELEM_PTR(*g_mat, i, 0)=connectResult[i-1];
@@ -1184,7 +911,7 @@ void openMP_MultiThreadCamera()
 		
 		int end=cvGetTickCount();
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
-		cout<<"Ê±¼ä£º"<<time<<endl;
+		cout<<"process time:"<<time<<endl;
 	}
 	cvDestroyAllWindows();
-}*/
+}
