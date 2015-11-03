@@ -673,8 +673,8 @@ int main()
 	//cameraMultiThread();
 	//videoMultiThread();
 	//TLDetection();
-	//openMP_MultiThreadVideo();
-	openMP_MultiThreadCamera();
+	openMP_MultiThreadVideo();
+	//openMP_MultiThreadCamera();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -754,12 +754,25 @@ void TLDetection()
 
 void openMP_MultiThreadVideo()
 {
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\light2.avi");
 	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\pt.avi");
 	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\20141115综合赛段行车记录仪\\PPG00001.MOV");
 	IplImage * frame,*copyFrame;
 	float connectResult[9]={0,0,0,0,0,0,0,0,0};
+	bool saveFlag=true;//是否保存检测结果
+	CvVideoWriter * writerTL=NULL;
+	VideoWriter writerTSR;
+	if (saveFlag)
+	{
+		SYSTEMTIME stTime;
+		GetLocalTime(&stTime);
+		char *videoPath = new char[100];// "D:/123.dat";
+		sprintf(videoPath, "ResultVideo//Video_%04d%02d%02d%02d%02d%02d.avi", stTime.wYear, stTime.wMonth, stTime.wDay, stTime.wHour, stTime.wMinute, stTime.wSecond);
+		writerTL=cvCreateVideoWriter(videoPath,CV_FOURCC('X', 'V', 'I', 'D'), 20, cvGetSize(resize_TLR), 1);
+		writerTSR.open("ResultVideo//TSR.avi",CV_FOURCC('X', 'V', 'I', 'D'), 20,Size(640,480));
+	}
+
 	while(1)
 	{
 		float TSRSend[7]={0,0,0,0,0,0,0};//store the traffic signs recognition result
@@ -802,6 +815,15 @@ void openMP_MultiThreadVideo()
 		namedWindow("TSR");
 		imshow("TSR",re_src);
 		waitKey(5);
+
+		if (saveFlag)
+		{
+			writerTSR<<re_src;
+			waitKey(2);
+			cvWriteFrame(writerTL,resize_TLR);
+			waitKey(2);
+		}
+
 		//get the union result
 		for (int i=0;i<7;i++)
 		{
@@ -828,12 +850,22 @@ void openMP_MultiThreadVideo()
 		}
 
 		char c=waitKey(5);
-		if (c==27)break;
+		if (c==27)
+		{
+			cvReleaseCapture(&cap);
+			cvReleaseImage(&resize_TLR);
+			cvDestroyAllWindows();
+			if (saveFlag)cvReleaseVideoWriter(&writerTL);
+			break;
+		}
+
 
 		int end=cvGetTickCount();
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
-		cout<<"Ê±¼ä£º"<<time<<endl;
+		cout<<"process time:"<<time<<endl;
 	}
+	if (saveFlag)cvReleaseVideoWriter(&writerTL);
+	cvReleaseImage(&resize_TLR);
 	cvReleaseCapture(&cap);
 	cvDestroyAllWindows();
 }
