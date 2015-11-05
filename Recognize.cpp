@@ -23,6 +23,14 @@ double predict(Mat & sample,CvANN_MLP& nnetwork,int numClasses)
 	
 			cv::Mat classificationResult(1, numClasses, CV_64F);
             nnetwork.predict(sample, classificationResult);
+			/*uchar* data=classificationResult.ptr<uchar>(0);
+			cout<<"¼ì²â½á¹û£º"<<endl;
+			for (int i=0;i<numClasses;i++)
+			{
+				double result=data[i];
+				cout<<result<<"  "<<endl;
+			}*/
+
             /*The classification result matrix holds weightage  of each class. 
             we take the class with the highest weightage as the resultant class */
  
@@ -30,17 +38,17 @@ double predict(Mat & sample,CvANN_MLP& nnetwork,int numClasses)
             int maxIndex = 0;
             double value=0.0;
             double maxValue=classificationResult.at<double>(0,0);
-            for(int index=1;index<numClasses;index++)
+            for(int index=0;index<numClasses;index++)
             {   value = classificationResult.at<double>(0,index);
                 if(value>maxValue)
-                {   maxValue = value;
+                {   
+					maxValue = value;
                     maxIndex=index;
- 
                 }
             }
 
        
-return maxIndex + 1;
+		return maxIndex;
 
 } 
 
@@ -60,7 +68,7 @@ int Recognize(CvANN_MLP &nnetwork,PCA &pca,Mat test_img,int numClasses)
 
 			int pred;//predict result
 			pred = predict(test_img_Reduce, nnetwork,numClasses);
-			//cout << " predicted value :   " << pred<< endl << endl << endl;
+			cout << " predicted value :   " << pred<< endl << endl << endl;
 
 			return pred;
 }

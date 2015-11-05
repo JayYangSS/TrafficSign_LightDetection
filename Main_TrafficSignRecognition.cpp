@@ -1,4 +1,4 @@
-#include "HOG_ANN.h"
+﻿#include "HOG_ANN.h"
 #include "traffic.h"
 #include "math_utils.h"
 #include "socket_server_task.h"
@@ -12,13 +12,15 @@
 Size Win_vertical(15,30),block_vertical(5,10),blockStride_vertical(5,5),cell_vertical(5,5);
 HOGDescriptor myHOG_vertical(Win_vertical,block_vertical,blockStride_vertical,cell_vertical,9,1,-1.0,0,0.2,true,64);
 HOGDescriptor myHOG_horz(Size(36,12),Size(12,6),Size(6,6),Size(6,6),9,1,-1.0,0,0.2,true,64);
-//HOGDescriptor TriangleHOG(Size(40,40),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
-//HOGDescriptor RoundHOG(Size(40,40),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
-//HOGDescriptor RectHOG(Size(40,40),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
+HOGDescriptor TriangleHOG(Size(40,40),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
+HOGDescriptor RoundHOG(Size(40,40),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
+HOGDescriptor RectHOG(Size(30,50),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
+MySVM TriangleSVM,RoundRimSVM,RectBlueSVM;
+
 int Frame_pos;//µ±Ç°Ö¡Î»ÖÃ
 
 //control TSR_flag
-bool isTrain=true;//traffic signs
+bool isTrain=false;//traffic signs
 bool TRAIN=false;//TL
 bool HORZ=false;//TL
 bool saveFlag=true;
@@ -127,121 +129,6 @@ bool isContainSigns(Mat img,Rect searchRegion,float thresholdRatio)
 	return false;
 }
 
-void covertImg2HOG(Mat img,vector<float> &descriptors,int windowWidth,int windowHeight)
-{
-	HOGDescriptor hog(Size(windowWidth,windowHeight),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
-	hog.compute(img,descriptors,Size(8,8));
-	cout<<"HOG Descriptor size:"<<descriptors.size()<<endl;
-}
-
-//get the HOG features(float array) of each image in the specified folder
-//imgWidth and the imgHeight is the size that the image will be resized to
-int readdata(String path,int num_folder,String outputfile,int imgWidth,int imgHeight)
-{
-	fstream dataSet(outputfile.c_str(),ios::out);
-	String img_num,txt_path,folder,img_path;
-	stringstream SS_folder;
-	Mat img;
-	vector<float> pixelVector;
-	float ClassId=0;
-	int sampleNum=0;
-	//folder ID loop
-	for(int j=0;j<num_folder;j++)
-	{
-		//get the folder name
-		SS_folder.clear();
-		SS_folder<<j;
-		SS_folder>>folder;
-		txt_path=path+"\\"+folder+"\\description.txt";
-		ifstream txt(txt_path);
-		if (!txt)
-		{
-			cout<<"can't open the txt file!"<<endl;
-			exit(1);
-		}
-		
-		while(getline(txt,img_path))
-		{
-			sampleNum++;
-			//read image
-			img=imread(img_path);
-			Mat resizedImg(imgHeight,imgWidth,CV_8UC3) ;
-			resize(img,resizedImg,resizedImg.size());
-
-			covertImg2HOG(resizedImg,pixelVector,imgWidth,imgHeight);
-			int img_dim=pixelVector.size();
-			for( int l=0 ; l < img_dim; l++)
-			{	
-				dataSet << pixelVector[l] << " ";
-			}
-
-			//class ID=0 means the negative samples
-			dataSet << ClassId << "\n";
-		}
-		ClassId=ClassId+1.0;
-	}
-	dataSet.close();
-	return sampleNum;
-}
-
-void shuffleDataSet(string path,string outputfile)
-{
-	// raw dataset file  8729(rows) * 4800(cols)  not yet shuffle  
-	std::ifstream file(path);
-	std::string line;
-
-	Mat dataSet;
-	int ligne =0;
-
-	// vector of vector containing each line of the dataset file = each image pixels (1*4800)
-	vector< vector<double> > vv;
-
-
-	// iterates through the file to construct the vector vv
-	while (std::getline(file, line))
-	{
-		std::istringstream iss(line);
-		double n;
-		int k = 0;
-
-		vector<double> v;
-
-		while (iss >> n)
-		{ 	
-			if( k == RESIZED_IMG_DIM +1) break; 
-			v.push_back(n);
-			k++;
-		}
-
-		vv.push_back(v);
-		ligne ++ ;
-
-		cout<<"num:"<<ligne<<endl;
-
-	}
-	cout<<"put done"<<endl;
-
-	random_shuffle(vv.begin(), vv.end());
-
-
-	int countPut=0;
-	for( int i=0; i < vv.size(); i++)
-	{ 
-		countPut++;
-		double* tab = &vv[i][0];
-		Mat img(1,RESIZED_IMG_DIM +1,CV_64FC1,tab);
-		dataSet.push_back(img);
-		cout<<"countPut:"<<countPut<<endl;
-	}
-	FileStorage fs(outputfile,FileStorage::WRITE);   
-	//fetch the file name(without".yml")
-	replace(outputfile.begin(),outputfile.end(),'.',' ');
-	stringstream iss(outputfile);
-	string outputfileName;
-	iss>>outputfileName;
-	fs<< outputfileName<< dataSet;
-	fs.release(); 
-}
 
 void savePCA(string filepath,string outputPath)
 {
@@ -297,7 +184,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 {
 	vector<ShapeRecResult> shapeResult;
 	Mat src(frame);
-	
+
 	resize(src,re_src,Size(640,480));
 	Mat bilateralImg;
 	bilateralFilter(re_src,bilateralImg,7,7*2,7/2);
@@ -351,7 +238,20 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 			if(shapeResult[i].shape==TRIANGLE&&shapeResult[i].color==Y_VALUE)//yellow
 			{
 				rectangle(re_src,leftup,rightdown,colorMode[0],2);
-				int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
+				//int result=Recognize(nnetwork,pca,recognizeMat,TRIANGLE_CLASSES);
+				//put the descriptor to Mat and recognize
+				Mat tmpTriangle;
+				vector<float> descriptor;
+		
+				resize(recognizeMat,tmpTriangle,Size(IMG_NEW_DIM,IMG_NEW_DIM));
+				TriangleHOG.compute(tmpTriangle,descriptor,Size(8,8));
+				int DescriptorDim=descriptor.size();		
+				Mat SVMTriangleMat(1,DescriptorDim,CV_32FC1);
+				for(int i=0; i<DescriptorDim; i++)
+					SVMTriangleMat.at<float>(0,i) = descriptor[i];
+				
+				int result=TriangleSVM.predict(SVMTriangleMat);
+
 				//set the recognition result to the image
 				switch(result)
 				{
@@ -397,7 +297,6 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 					if((float)(count)/(float)signFilters[1].size()>=0.4)
 					{
 						TSRSend[1]=2.0;
-						//cout<<"detected"<<endl;
 					}
 					else
 					{
@@ -417,7 +316,18 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 			else if(shapeResult[i].shape==RECTANGLE&&shapeResult[i].color==B_VALUE)//circle
 			{
 				rectangle(re_src,leftup,rightdown,colorMode[1],2);
-				int result=Recognize(nnetwork_RectBlue,pca_RectBlue,recognizeMat,RECTBLUE_CLASSES);
+				//int result=Recognize(nnetwork_RectBlue,pca_RectBlue,recognizeMat,RECTBLUE_CLASSES);
+				Mat tmpRectBlue;
+				vector<float> descriptor;
+				resize(recognizeMat,tmpRectBlue,Size(RECT_SIGN_WIDTH,RECT_SIGN_HEIGHT));
+				RectHOG.compute(tmpRectBlue,descriptor,Size(8,8));
+				int DescriptorDim=descriptor.size();		
+				Mat SVMRectBlueMat(1,DescriptorDim,CV_32FC1);
+				for(int i=0; i<DescriptorDim; i++)
+					SVMRectBlueMat.at<float>(0,i) = descriptor[i];
+
+				int result=RectBlueSVM.predict(SVMRectBlueMat);
+			
 				//set the recognition result to the image
 				switch(result)
 				{
@@ -427,7 +337,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 					signFilters[2].push_back(3.0);
 					if (signFilters[2].size()>5)
 						signFilters[2].pop_front();
-			
+
 					it=signFilters[2].begin();
 					while (it<signFilters[2].end())
 					{
@@ -459,9 +369,21 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 			else if(shapeResult[i].shape==CIRCLE&&shapeResult[i].color!=B_VALUE)//circle
 			{
 				rectangle(re_src,leftup,rightdown,colorMode[2],2);
-				int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
-				//set the recognition result to the image
+				//int result=Recognize(nnetwork_RoundRim,pca_RoundRim,recognizeMat,ROUNDRIM_CLASSES);
+				
+				Mat tmpRoundRim;
+				vector<float> descriptor;
+			
+				resize(recognizeMat,tmpRoundRim,Size(IMG_NEW_DIM,IMG_NEW_DIM));
+				RoundHOG.compute(tmpRoundRim,descriptor,Size(8,8));
+				int DescriptorDim=descriptor.size();		
+				Mat SVMRoundRimMat(1,DescriptorDim,CV_32FC1);
+				for(int i=0; i<DescriptorDim; i++)
+					SVMRoundRimMat.at<float>(0,i) = descriptor[i];
 
+				int result=RoundRimSVM.predict(SVMRoundRimMat);
+		
+				//set the recognition result to the image
 				switch(result)
 				{
 				case 1:
@@ -497,7 +419,7 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 					signFilters[4].push_back(5.0);
 					if (signFilters[4].size()>5)
 						signFilters[4].pop_front();
-	
+
 					it=signFilters[4].begin();
 					while (it<signFilters[4].end())
 					{
@@ -583,49 +505,26 @@ int main()
 	else
 		hogSVMTrainTL(myHOG_vertical,TRAIN,HORZ);
 
-	//BP neural network training
-	if(isTrain)
+	//traffic sign training
+	if (isTrain)
 	{
-		//triangle
-		String path="D:\\JY\\JY_TrainingSamples\\chanshuTrafficSign\\triangle";
-		int triangleNum=readdata(path,TRIANGLE_CLASSES,"triangle.txt",IMG_NEW_DIM,IMG_NEW_DIM);
-		shuffleDataSet("triangle.txt","shuffleTriangle.yml");
-		savePCA("shuffleTriangle.yml","pcaTriangle.yml");
-		loadPCA("pcaTriangle.yml", pca);
-		NeuralNetTrain("shuffleTriangle.yml","xmlTriangle.xml",pca,triangleNum,TRIANGLE_CLASSES);
-		nnetwork.load("xmlTriangle.xml", "xmlTriangle");
+		const String TSRPath="D:\\JY\\JY_TrainingSamples\\chanshuTrafficSign\\";
+		const String TrianglePath=TSRPath+"triangle";
+		const String RectPath=TSRPath+"RectBlue";
+		const String RoundRimPath=TSRPath+"RoundRim";
+		HOGTrainingTrafficSign(TrianglePath,TriangleHOG,TRIANGLE_CLASSES,IMG_NEW_DIM,IMG_NEW_DIM,"src//TriangleTSR.xml");
+		HOGTrainingTrafficSign(RoundRimPath,RoundHOG,ROUNDRIM_CLASSES,IMG_NEW_DIM,IMG_NEW_DIM,"src//RoundRimTSR.xml");
+		HOGTrainingTrafficSign(RectPath,RectHOG,RECTBLUE_CLASSES,RECT_SIGN_WIDTH,RECT_SIGN_HEIGHT,"src//RectBlueTSR.xml");
 
-		//RoundRim
-		String path_RoundRim="D:\\JY\\JY_TrainingSamples\\chanshuTrafficSign\\RoundRim";
-		int roundrimNum=readdata(path_RoundRim,ROUNDRIM_CLASSES,"RoundRim.txt",IMG_NEW_DIM,IMG_NEW_DIM);
-		shuffleDataSet("RoundRim.txt","shuffleRoundRim.yml");
-		savePCA("shuffleRoundRim.yml","pcaRoundRim.yml");
-		loadPCA("pcaRoundRim.yml", pca_RoundRim);
-		NeuralNetTrain("shuffleRoundRim.yml","xmlRoundRim.xml",pca_RoundRim,roundrimNum,ROUNDRIM_CLASSES);
-		nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
-
-		//BlueRect
-		String path_RectBlue="D:\\JY\\JY_TrainingSamples\\chanshuTrafficSign\\RectBlue";
-		int roundblueNum=readdata(path_RectBlue,RECTBLUE_CLASSES,"\RectBlue.txt",RECT_SIGN_WIDTH,RECT_SIGN_HEIGHT);
-		shuffleDataSet("RectBlue.txt","shuffleRectBlue.yml");
-		savePCA("shuffleRectBlue.yml","pcaRectBlue.yml");
-		loadPCA("pcaRectBlue.yml", pca_RectBlue);
-		NeuralNetTrain("shuffleRectBlue.yml","xmlRectBlue.xml",pca_RectBlue,roundblueNum,RECTBLUE_CLASSES);
-		nnetwork_RectBlue.load("xmlRectBlue.xml", "xmlRectBlue");
+		TriangleSVM.load("src//TriangleTSR.xml");
+		RoundRimSVM.load("src//RoundRimTSR.xml");
+		RectBlueSVM.load("src//RectBlueTSR.xml");
 	}else{
-		loadPCA("pcaTriangle.yml", pca);
-		loadPCA("pcaRoundRim.yml", pca_RoundRim);
-		loadPCA("pcaRectBlue.yml", pca_RectBlue);
-		nnetwork.load("xmlTriangle.xml", "xmlTriangle");
-		nnetwork_RoundRim.load("xmlRoundRim.xml", "xmlRoundRim");
-		nnetwork_RectBlue.load("xmlRectBlue.xml", "xmlRectBlue");
+		TriangleSVM.load("src//TriangleTSR.xml");
+		RoundRimSVM.load("src//RoundRimTSR.xml");
+		RectBlueSVM.load("src//RectBlueTSR.xml");
 	}
-	
-	//test_RBYcolorMerge_Video();
-	//testCamera(pca,pca_RoundRim,pca_RectBlue,nnetwork,nnetwork_RoundRim,nnetwork_RoundBlue);
-	//cameraMultiThread();
-	//videoMultiThread();
-	//TLDetection();
+
 	openMP_MultiThreadVideo();
 	//openMP_MultiThreadCamera();
 	cvReleaseMat(&g_mat);
@@ -702,7 +601,7 @@ void openMP_MultiThreadVideo()
 {
 	bool saveFlag=false;
 	IplImage * frame,*copyFrame;
-	float connectResult[9]={0,0,0,0,0,0,0,0,0};
+	float connectResult[10]={0,0,0,0,0,0,0,0,0,0};
 	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\good5.avi");
 	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
@@ -759,7 +658,6 @@ void openMP_MultiThreadVideo()
 		namedWindow("TSR");
 		imshow("TSR",re_src);
 		waitKey(5);
-
 
 		if (saveFlag)
 		{
@@ -912,7 +810,7 @@ void openMP_MultiThreadCamera()
 #endif
 			break;
 		}
-		
+
 		int end=cvGetTickCount();
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
 		cout<<"process time:"<<time<<endl;

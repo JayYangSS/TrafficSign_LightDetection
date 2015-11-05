@@ -93,6 +93,7 @@ void rgb2hsi(int red, int green, int blue, int& hue, int& saturation, int& inten
 void setLabel(cv::Mat& im, const std::string label, Rect r);//show the label information
 int detect_result(Mat src_test,vector<Rect> &found_filtered,DetecResult *detct,char Direct);
 int SortRect(Mat src_test,int num,DetecResult *Rst,char Direct);
+int HOGTrainingTrafficSign(const String path,HOGDescriptor &hog,int num_folder,int imgWidth,int imgHeight,String XMLName);//training SVM multi-Classifier for traffic signs recognition
 Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult);
 
 #endif
