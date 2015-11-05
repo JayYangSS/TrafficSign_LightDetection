@@ -39,13 +39,13 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	
 	const int iWidth = inputImage->width;
 	const int iHeight = inputImage->height;
-	int iWidthStep = inputImage->widthStep; 
 	IplImage* imageGrayScale = cvCreateImage(cvSize(iWidth,iHeight),IPL_DEPTH_8U,1);
+	int iWidthStep = imageGrayScale->widthStep; 
 	cvCvtColor(srcImage,imageGrayScale,CV_BGR2GRAY);
 	
 	
 	bool returnStatus = false;
-	int iSrcWidthStep = srcImage->widthStep;
+	//int iSrcWidthStep = srcImage->widthStep;
 
 	//thresholding for graylevel differences between seedpoints and its neibours
 	const int grayThresholding =70;//70
@@ -69,17 +69,21 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 
 
 	if( iDrawRectX1<0 || iDrawRectY1<0 || iDrawRectX2>=iWidth || iDrawRectY2>=iHeight)
+	{
+		cvReleaseImage(&imageGrayScale);//when return the result, the image must be released, otherwise,the memory will be leaked
 		return returnStatus;
+	}
+		
 
 	int sum=0;
 	int grayValue=0;
-	int bValue=0,gValue=0,rValue=0;
-	int bgrMax=0,bgrMin=0;
+	//int bValue=0,gValue=0,rValue=0;
+	//int bgrMax=0,bgrMin=0;
 	unsigned char* pData;
-	unsigned char* pSrcData;
+	//unsigned char* pSrcData;
 	for(int j=iDrawRectY1; j<=iDrawRectY2; j++){
 		pData = (unsigned char*)imageGrayScale->imageData + j*iWidthStep;
-		pSrcData = (unsigned char*)srcImage->imageData + j*iSrcWidthStep;
+		//pSrcData = (unsigned char*)srcImage->imageData + j*iSrcWidthStep;
 		for(int i=iDrawRectX1; i<=iDrawRectX2; i++){
 			grayValue = pData[i];
 		//	bValue = pSrcData[3*i]; gValue = pSrcData[3*i+1]; rValue = pSrcData[3*i+2];
@@ -132,9 +136,6 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 			*p1=*p1+1;
 		}
 	}
-
-
-
 
 	cvReleaseImage(&imageGrayScale);
 	return returnStatus;
