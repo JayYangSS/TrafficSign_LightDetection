@@ -18,7 +18,7 @@ HOGDescriptor myHOG_horz(Size(36,12),Size(12,6),Size(6,6),Size(6,6),9,1,-1.0,0,0
 int Frame_pos;//µ±Ç°Ö¡Î»ÖÃ
 
 //control TSR_flag
-bool isTrain=true;//traffic signs
+bool isTrain=false;//traffic signs
 bool TRAIN=false;//TL
 bool HORZ=false;//TL
 bool saveFlag=true;
@@ -703,8 +703,8 @@ void openMP_MultiThreadVideo()
 	bool saveFlag=false;
 	IplImage * frame,*copyFrame;
 	float connectResult[9]={0,0,0,0,0,0,0,0,0};
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\good5.avi");
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\2014.11.16\\3.mp4");
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
 	//findColorRange();

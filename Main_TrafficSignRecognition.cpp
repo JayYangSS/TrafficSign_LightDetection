@@ -203,7 +203,8 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 	waitKey(5);
 #endif
 
-	Mat noiseremove;
+//下面注释掉的部分是为了防止腐蚀操作将三角标志牌破坏
+/*	Mat noiseremove;
 	int erosion_size=1;
 	int eroionType=MORPH_CROSS;
 	Mat element = getStructuringElement( eroionType,Size( 2*erosion_size + 1, 2*erosion_size+1 ),Point( erosion_size, erosion_size ) );
@@ -212,8 +213,9 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 	namedWindow("morph");
 	imshow("morph",noiseremove);
 	waitKey(2);
-#endif
-	Mat labeledImg=ShapeRecognize(noiseremove,shapeResult);
+#endif*/
+
+	Mat labeledImg=ShapeRecognize(nhs_image,shapeResult);
 
 #if ISDEBUG_TS
 	namedWindow("labeledImg");
@@ -601,8 +603,8 @@ void openMP_MultiThreadVideo()
 {
 	bool saveFlag=false;
 	IplImage * frame,*copyFrame;
-	float connectResult[10]={0,0,0,0,0,0,0,0,0,0};
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\good5.avi");
+	float connectResult[7]={0,0,0,0,0,0,0};
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TSR\\Video_20151027102605.avi");
 	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
@@ -673,16 +675,16 @@ void openMP_MultiThreadVideo()
 		outfile.close();
 #endif
 		//get the union result
-		for (int i=0;i<7;i++)
+		for (int i=0;i<5;i++)
 		{
 			connectResult[i]=TSRSend[i];
 		}
 		for (int i=0;i<2;i++)
 		{
-			connectResult[7+i]=TLDSend[i];
+			connectResult[5+i]=TLDSend[i];
 		}
 
-		for (int i=0;i<9;i++)
+		for (int i=0;i<7;i++)
 		{
 			cout<<connectResult[i]<<" ";
 		}
@@ -726,7 +728,7 @@ void openMP_MultiThreadCamera()
 #endif
 
 	IplImage * src_frame,*copyFrame;
-	float connectResult[9]={0,0,0,0,0,0,0,0,0};
+	float connectResult[7]={0,0,0,0,0,0,0};
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	while(1)
 	{
@@ -777,16 +779,16 @@ void openMP_MultiThreadCamera()
 #endif
 		cvReleaseImage(&frame);
 		//get the union result
-		for (int i=0;i<7;i++)
+		for (int i=0;i<5;i++)
 		{
 			connectResult[i]=TSRSend[i];
 		}
 		for (int i=0;i<2;i++)
 		{
-			connectResult[7+i]=TLDSend[i];
+			connectResult[5+i]=TLDSend[i];
 		}
 
-		for (int i=0;i<9;i++)
+		for (int i=0;i<7;i++)
 		{
 			cout<<connectResult[i]<<" ";
 		}
