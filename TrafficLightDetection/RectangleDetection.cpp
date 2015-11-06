@@ -69,7 +69,11 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 
 
 	if( iDrawRectX1<0 || iDrawRectY1<0 || iDrawRectX2>=iWidth || iDrawRectY2>=iHeight)
+	{
+		cvReleaseImage(&imageGrayScale);
 		return returnStatus;
+	}
+		
 
 	int sum=0;
 	int grayValue=0;
