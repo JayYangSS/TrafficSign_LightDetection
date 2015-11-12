@@ -33,6 +33,9 @@
 #define HardExampleNO 334
 #define HORZ_HardExampleNO 23
 
+//识别信号灯的	检测窗口尺寸
+#define TLREC_WIDTH 12
+#define TLREC_HEIGHT 12
 
 const float ROI_HeightRatio_TL=0.6;
 const string debugTLPath="D:\\JY\\TrafficSignDetection\\TrafficSignDetection\\debugInfo\\TLdebug.txt";

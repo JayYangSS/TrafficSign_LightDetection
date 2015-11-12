@@ -49,7 +49,7 @@ IplImage* noiseRemoval2(IplImage* inputImage)
 	int iWidth = inputImage->width;
 	int iHeight = inputImage->height;
 
-	IplImage* imageNoiseRem = cvCreateImage(cvSize(iWidth,iHeight),IPL_DEPTH_8U,3);
+	IplImage* imageNoiseRem = cvCreateImage(cvSize(iWidth,iHeight),imageNoiseRem->depth,imageNoiseRem->nChannels);
 	if(!imageNoiseRem)
 		exit(EXIT_FAILURE);
 	

@@ -12,10 +12,16 @@
 Size Win_vertical(15,30),block_vertical(5,10),blockStride_vertical(5,5),cell_vertical(5,5);
 HOGDescriptor myHOG_vertical(Win_vertical,block_vertical,blockStride_vertical,cell_vertical,9,1,-1.0,0,0.2,true,64);
 HOGDescriptor myHOG_horz(Size(36,12),Size(12,6),Size(6,6),Size(6,6),9,1,-1.0,0,0.2,true,64);
+
+//标志牌HOG特征
 HOGDescriptor TriangleHOG(Size(40,40),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
 HOGDescriptor RoundHOG(Size(40,40),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
 HOGDescriptor RectHOG(Size(30,50),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
+
+//识别信号灯类别的HOG特征
+HOGDescriptor TLRecHOG(Size(12,12),Size(6,6),Size(3,3),Size(3,3),9,1,-1.0,0,0.2,true,20);
 MySVM TriangleSVM,RoundRimSVM,RectBlueSVM;
+MySVM TLRecSVM;//识别红色信号灯类别的SVM分类器
 
 int Frame_pos;//µ±Ç°Ö¡Î»ÖÃ
 
@@ -23,6 +29,7 @@ int Frame_pos;//µ±Ç°Ö¡Î»ÖÃ
 bool isTrain=false;//traffic signs
 bool TRAIN=false;//TL
 bool HORZ=false;//TL
+bool TLRecTrain=true;//是否训练信号灯识别分类器
 bool saveFlag=true;
 Mat re_src;//for traffic signs detection 
 IplImage *resize_TLR=cvCreateImage(Size(800,600),8,3);
@@ -32,8 +39,8 @@ vector<Rect> found_TSR;//the bounding box for traffic signs
 Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};//the color mode for the traffic sign detection(Y,B,R)
 CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RectBlue;//neural networks for three different kinds of traffic signs 
 PCA pca,pca_RoundRim,pca_RectBlue;
-deque<float> signFilters[7];
-deque<float> TLFilters[2];
+deque<float> signFilters[5];
+deque<float> TLFilters[3];
 
 //test function
 void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RectBlue,CvANN_MLP &nnetwork,
@@ -163,8 +170,31 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 
 	found_TL.clear();
 	cvResize(frame,resize_TLR);
+	/*//此处先使用顶帽算法，再使用闭操作
+	IplImage* tmpGray=cvCreateImage(cvSize(frame->width,frame->height),IPL_DEPTH_8U,1);
+	IplImage* tmpTophat=cvCreateImage(cvSize(frame->width,frame->height),frame->depth,3);
+
+	cvCvtColor(frame,tmpGray,CV_BGR2GRAY);
+	IplConvKernel *t=cvCreateStructuringElementEx(9,9,4,4,CV_SHAPE_ELLIPSE);
+	cvMorphologyEx(frame,tmpTophat,NULL,t,CV_MOP_TOPHAT);
+
+	IplImage* tmpClose=cvCreateImage(cvSize(frame->width,frame->height),frame->depth,3);
+	cvMorphologyEx(tmpTophat,tmpClose,NULL,t,CV_MOP_CLOSE);
+	cvShowImage("tmpClose",tmpClose);
+	//cvWaitKey(1);
+
+	cvShowImage("TMPTopHat",tmpTophat);
+	cvWaitKey(4);
+	cvReleaseImage(&tmpGray);
+	cvReleaseImage(&tmpTophat);
+	cvReleaseStructuringElement(&t);*/
 
 	imageSeg = colorSegmentationTL(resize_TLR);
+
+	/*IplImage *closeImg=cvCreateImage(Size(imageSeg->width,imageSeg->height),imageSeg->depth,imageSeg->nChannels);
+	IplConvKernel *t=cvCreateStructuringElementEx(7,7,3,3,CV_SHAPE_ELLIPSE);
+	cvMorphologyEx(imageSeg,closeImg,NULL,t,CV_MOP_CLOSE);
+	cvShowImage("closeImg",closeImg);*/
 	imageNoiseRem=noiseRemoval(imageSeg);
 #if ISDEBUG_TL
 	cvNamedWindow("imgseg");
@@ -177,7 +207,6 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 	componentExtractionTL(imageNoiseRem,resize_TLR,TLDSend);
 	cvReleaseImage(&imageSeg);
 	cvReleaseImage(&imageNoiseRem);
-	cvReleaseImage(&frame);
 }
 
 void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
@@ -235,7 +264,6 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 			Mat recognizeMat=re_src(boundingBox);//cut the traffic signs
 			//int count=0;
 			deque<float>::iterator it;
-
 			//for different color, set different neural network
 			if(shapeResult[i].shape==TRIANGLE&&shapeResult[i].color==Y_VALUE)//yellow
 			{
@@ -507,6 +535,17 @@ int main()
 	else
 		hogSVMTrainTL(myHOG_vertical,TRAIN,HORZ);
 
+	//信号灯识别训练
+	if (TLRecTrain)
+	{
+		const String TLRecPath="D:\\JY\\JY_TrainingSamples\\TLRec";
+		const int TLTypeNum=3;//包括非TL
+		HOGTrainingTrafficSign(TLRecPath,TLRecHOG,TLTypeNum,TLREC_WIDTH,TLREC_HEIGHT,"src//TLRec.xml");
+		TLRecSVM.load("src//TLRec.xml");
+	}else{
+		TLRecSVM.load("src//TLRec.xml");
+	}
+	
 	//traffic sign training
 	if (isTrain)
 	{
@@ -603,9 +642,9 @@ void openMP_MultiThreadVideo()
 {
 	bool saveFlag=false;
 	IplImage * frame,*copyFrame;
-	float connectResult[7]={0,0,0,0,0,0,0};
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TSR\\Video_20151027102605.avi");
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
+	float connectResult[8]={0,0,0,0,0,0,0,0};
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\good5.avi");
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\2014.11.16\\1_clip.mp4");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
 	//findColorRange();
@@ -621,8 +660,8 @@ void openMP_MultiThreadVideo()
 
 	while(1)
 	{
-		float TSRSend[7]={0,0,0,0,0,0,0};//store the traffic signs recognition result
-		float TLDSend[2]={0,0};//store the traffic lights detection result
+		float TSRSend[5]={0,0,0,0,0};//store the traffic signs recognition result
+		float TLDSend[3]={0,0,0};//store the traffic lights detection result
 
 		int start=cvGetTickCount();
 		frame=cvQueryFrame(cap);
@@ -633,6 +672,7 @@ void openMP_MultiThreadVideo()
 #endif
 		copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
 		cvCopy(frame,copyFrame);
+		
 #if OPENMP
 #pragma omp parallel sections
 		{
@@ -649,9 +689,12 @@ void openMP_MultiThreadVideo()
 			}
 		}
 #else
-		TSRecognitionPerFrame(frame,TSRSend);
+		//TSRecognitionPerFrame(frame,TSRSend);
 		TLDetectionPerFrame(copyFrame,TLDSend);
+		
 #endif
+
+#if IS_SHOW_RESULT
 		//show the detection  result of TL
 		cvNamedWindow("TL");
 		cvShowImage("TL",resize_TLR);
@@ -660,7 +703,7 @@ void openMP_MultiThreadVideo()
 		namedWindow("TSR");
 		imshow("TSR",re_src);
 		waitKey(5);
-
+#endif
 		if (saveFlag)
 		{
 			cvWriteFrame(writer,resize_TLR);
@@ -679,12 +722,12 @@ void openMP_MultiThreadVideo()
 		{
 			connectResult[i]=TSRSend[i];
 		}
-		for (int i=0;i<2;i++)
+		for (int i=0;i<3;i++)
 		{
 			connectResult[5+i]=TLDSend[i];
 		}
 
-		for (int i=0;i<7;i++)
+		for (int i=0;i<8;i++)
 		{
 			cout<<connectResult[i]<<" ";
 		}
@@ -694,7 +737,7 @@ void openMP_MultiThreadVideo()
 		{
 			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (int)(1000*(float)getTickCount()/getTickFrequency()-startTime)%1000;//time stamp,防止溢出		
 			//put the result into the g_mat to transmit
-			for (int i=1;i<=9;i++)
+			for (int i=1;i<=8;i++)
 				*(float *)CV_MAT_ELEM_PTR(*g_mat, i, 0)=connectResult[i-1];
 			gb_filled = true;
 		}
@@ -709,6 +752,7 @@ void openMP_MultiThreadVideo()
 			break;
 		}
 
+		cvReleaseImage(&copyFrame);
 		int end=cvGetTickCount();
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
 		cout<<"process time:"<<time<<endl;
@@ -728,13 +772,13 @@ void openMP_MultiThreadCamera()
 #endif
 
 	IplImage * src_frame,*copyFrame;
-	float connectResult[7]={0,0,0,0,0,0,0};
+	float connectResult[8]={0,0,0,0,0,0,0,0};
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	while(1)
 	{
 		src_frame=p.Camera2IplImage();
-		float TSRSend[7]={0,0,0,0,0,0,0};//store the traffic signs recognition result
-		float TLDSend[2]={0,0};//store the traffic lights detection result
+		float TSRSend[5]={0,0,0,0,0};//store the traffic signs recognition result
+		float TLDSend[3]={0,0,0};//store the traffic lights detection result
 		IplImage* frame=cvCreateImage(Size(800,600),src_frame->depth,src_frame->nChannels);
 		int start=cvGetTickCount();
 		if(!frame)break;
@@ -766,6 +810,8 @@ void openMP_MultiThreadCamera()
 		TSRecognitionPerFrame(frame,TSRSend);
 		TLDetectionPerFrame(copyFrame,TLDSend);
 #endif
+
+#if IS_SHOW_RESULT
 		//show the detection  result of TL
 		cvNamedWindow("TL");
 		cvShowImage("TL",resize_TLR);
@@ -774,21 +820,24 @@ void openMP_MultiThreadCamera()
 		namedWindow("TSR");
 		imshow("TSR",re_src);
 		waitKey(5);
+#endif
+
 #if IS_SAVE
 		cvWriteFrame(writer,frame);
 #endif
 		cvReleaseImage(&frame);
+		cvReleaseImage(&copyFrame);
 		//get the union result
 		for (int i=0;i<5;i++)
 		{
 			connectResult[i]=TSRSend[i];
 		}
-		for (int i=0;i<2;i++)
+		for (int i=0;i<3;i++)
 		{
 			connectResult[5+i]=TLDSend[i];
 		}
 
-		for (int i=0;i<7;i++)
+		for (int i=0;i<8;i++)
 		{
 			cout<<connectResult[i]<<" ";
 		}
@@ -798,7 +847,7 @@ void openMP_MultiThreadCamera()
 		{
 			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (int)(1000*(float)getTickCount()/getTickFrequency()-startTime)%1000;//time stamp,防止溢出			
 			//put the result into the g_mat to transmit
-			for (int i=1;i<=9;i++)
+			for (int i=1;i<=8;i++)
 				*(float *)CV_MAT_ELEM_PTR(*g_mat, i, 0)=connectResult[i-1];
 			gb_filled = true;
 		}
@@ -812,7 +861,7 @@ void openMP_MultiThreadCamera()
 #endif
 			break;
 		}
-
+		
 		int end=cvGetTickCount();
 		float time=(float)(end-start)/(cvGetTickFrequency()*1000000);
 		cout<<"process time:"<<time<<endl;

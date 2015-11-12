@@ -66,6 +66,55 @@ bool BlackAroundLight(IplImage* srcImg,CvRect	iRect)
 	return flag;
 }
 
+/*
+//not using hole traffic ligh as samples,just use the square light
+bool IsLight(IplImage* srcImg,CvRect	iRect)
+{
+	bool returnStatus = false;
+	int iWidth = srcImg->width,topX=iRect.x;
+	int iHeight = srcImg->height,topY=iRect.y;
+	int RectWidth,RectHeight;
+	if(iRect.width<15)RectWidth=15;
+	RectWidth=iRect.width;
+	if(iRect.height<30)RectHeight=30;
+	RectHeight=iRect.height;
+	bool flag=false;
+
+
+
+	//设置SVM+HOG处理区域
+	CvRect rect;
+	if(topX+25>iWidth||topX-20<0)return false;
+	else{
+		rect.x=iRect.x-20;
+		rect.width=45;
+	}
+
+	if(topY+40>iHeight||topY-30<0)return false;
+	else{
+		rect.y=iRect.y-30;
+		rect.height=70;
+	}
+
+
+	cvSetImageROI(srcImg,rect);
+	Mat SVMROI(srcImg);
+
+	cvResetImageROI(srcImg);//这一句少了就出错了啊！！
+	if(HORZ)
+		flag=BoxDetectTL(SVMROI,myHOG_horz,HORZ);
+	flag=BoxDetectTL(SVMROI,myHOG_vertical,HORZ);
+	//cvReleaseImage(&srcImg);
+	return flag;
+}
+*/
+
+
+
+
+
+
+
 bool RegionGrowB2(
 				  int nSeedX, 
 				  int nSeedY, 

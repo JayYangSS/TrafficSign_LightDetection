@@ -1,4 +1,23 @@
 #include "std_tlr.h"
+extern HOGDescriptor TLRecHOG;
+extern MySVM TLRecSVM;//识别红色信号灯类别的SVM分类器
+
+#define IS_CUTIMG 0
+
+void GetImageRect(IplImage* orgImage, CvRect rectInImage, IplImage* imgRect)
+{
+	//从图像orgImage中提取一块（rectInImage）子图像imgRect
+	IplImage *result=imgRect;
+	CvSize size;
+	size.width=rectInImage.width;
+	size.height=rectInImage.height;
+	//result=cvCreateImage( size, orgImage->depth, orgImage->nChannels );
+	//从图像中提取子图像
+	cvSetImageROI(orgImage,rectInImage);
+	cvCopy(orgImage,result);
+	cvResetImageROI(orgImage);
+}
+
 
 bool isLighInBox(Mat src)
 {
@@ -9,8 +28,10 @@ bool isLighInBox(Mat src)
 	double max_topHat,min_topHat;
 	Point maxPoint,minPoint;
 	minMaxLoc(topHat,&min_topHat,&max_topHat,&minPoint,&maxPoint);
-	
-
+	imshow("src",src);
+	waitKey(1);
+	imshow("topHat",topHat);
+	waitKey(1);
 	double max_tempGray,min_tempGray;
 	Point maxPoint_tempGray,minPoint_tempGray;
 	minMaxLoc(src,&min_tempGray,&max_tempGray,&minPoint_tempGray,&maxPoint_tempGray);
@@ -30,11 +51,10 @@ bool isLighInBox(Mat src)
 	outfile<<""<<endl;
 	outfile.close();
 #endif
-	
 	return false;
 }
 
-bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2)//p1为红灯，p2为绿灯
+bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2)//p1为前行位，p2为左转位
 {
 	
 	const int iWidth = inputImage->width;
@@ -83,12 +103,8 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	//unsigned char* pSrcData;
 	for(int j=iDrawRectY1; j<=iDrawRectY2; j++){
 		pData = (unsigned char*)imageGrayScale->imageData + j*iWidthStep;
-		//pSrcData = (unsigned char*)srcImage->imageData + j*iSrcWidthStep;
 		for(int i=iDrawRectX1; i<=iDrawRectX2; i++){
 			grayValue = pData[i];
-		//	bValue = pSrcData[3*i]; gValue = pSrcData[3*i+1]; rValue = pSrcData[3*i+2];
-		//	bgrMax = max(max(bValue,gValue),rValue);
-		//	bgrMin = min(min(bValue,gValue),rValue);
 			if((grayValue<=grayThresholding))
 				sum++;
 		}
@@ -118,7 +134,7 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	isLighInBox(tmpMat);
 #endif
 
-	if(ratio>=RatioThreshold&&BlackAroundLight(srcImage,iRect))
+	 if(ratio>=RatioThreshold&&ratio<=90&&BlackAroundLight(srcImage,iRect))
 		returnStatus = true;
 
 	//若检测出的矩形框符合条件，则在原始图像上画出矩形标示框
@@ -127,13 +143,62 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 		if(iColor==GREEN_PIXEL_LABEL)
 		{
 			cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,255,0),2);
-			*p2=*p2+1;
+			//*p2=*p2+1;
 		}
 
 		else if(iColor==RED_PIXEL_LABEL)
 		{
 			cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,0,255),2);
-			*p1=*p1+1;
+			//*p1=*p1+1;
+
+
+			//TODO:识别信号灯指向
+			CvSize cutSize;
+			cutSize.width=iRect.width;
+			cutSize.height=iRect.height;
+			IplImage *tmpCutImg=cvCreateImage(cutSize,srcImage->depth,srcImage->nChannels);
+			GetImageRect(srcImage,iRect,tmpCutImg);
+#if IS_CUTIMG
+			cvShowImage("tmpCutImg",tmpCutImg);
+			cvWaitKey(1);
+			char tmpName[100];
+			static int ppp=0;
+			ppp++;
+			sprintf_s(tmpName,"ImgCut//%d.jpg",ppp);
+			cvSaveImage(tmpName,tmpCutImg);
+#endif
+
+			Mat cutMat(tmpCutImg);
+			Mat tmpTLRec;
+			vector<float> descriptor;
+			
+			//识别信号灯类别
+			resize(cutMat,tmpTLRec,Size(TLREC_WIDTH,TLREC_HEIGHT));
+			TLRecHOG.compute(tmpTLRec,descriptor,Size(8,8));
+			int DescriptorDim=descriptor.size();		
+			Mat SVMTriangleMat(1,DescriptorDim,CV_32FC1);
+			for(int i=0; i<DescriptorDim; i++)
+				SVMTriangleMat.at<float>(0,i) = descriptor[i];
+
+			int result=TLRecSVM.predict(SVMTriangleMat);
+			switch(result)
+			{
+			case 0://圆形
+				//cout<<"圆形"<<endl;
+				*p1=1;
+				break;
+			case 1://禁止左转
+				//cout<<"禁止左转"<<endl;
+				*p2=1;
+				break;
+			case 2://右转
+				//cout<<"禁止右转"<<endl;
+				//*p3=1;
+				break;
+			default:
+				break;
+			}
+			cvReleaseImage(&tmpCutImg);//使用完Mat后再释放，否则与IplImage公用数据区的Mat就被清空了
 		}
 	}
 

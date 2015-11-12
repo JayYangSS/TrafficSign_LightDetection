@@ -16,6 +16,7 @@
 #define RECT_SIGN_WIDTH  30
 #define RECT_SIGN_HEIGHT  50
 #define RESIZED_IMG_DIM     1764
+
 //number of classes
 #define TRIANGLE_CLASSES 3 //the number of triangle classes,include the negetive samples
 #define ROUNDRIM_CLASSES 3//the number of round rim classes,include the negetive samples
