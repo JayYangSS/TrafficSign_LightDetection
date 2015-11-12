@@ -20,8 +20,11 @@ HOGDescriptor RectHOG(Size(30,50),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2
 
 //识别信号灯类别的HOG特征
 HOGDescriptor TLRecHOG(Size(12,12),Size(6,6),Size(3,3),Size(3,3),9,1,-1.0,0,0.2,true,20);
+HOGDescriptor isTLHOG(Size(12,12),Size(6,6),Size(3,3),Size(3,3),9,1,-1.0,0,0.2,true,20);//识别是否是信号灯
+
 MySVM TriangleSVM,RoundRimSVM,RectBlueSVM;
 MySVM TLRecSVM;//识别红色信号灯类别的SVM分类器
+MySVM isTLSVM;//识别识别是否为信号灯的SVM分类器
 
 int Frame_pos;//µ±Ç°Ö¡Î»ÖÃ
 
@@ -191,10 +194,14 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 
 	imageSeg = colorSegmentationTL(resize_TLR);
 
-	/*IplImage *closeImg=cvCreateImage(Size(imageSeg->width,imageSeg->height),imageSeg->depth,imageSeg->nChannels);
+
+
+	IplImage *closeImg=cvCreateImage(Size(imageSeg->width,imageSeg->height),imageSeg->depth,imageSeg->nChannels);
 	IplConvKernel *t=cvCreateStructuringElementEx(7,7,3,3,CV_SHAPE_ELLIPSE);
 	cvMorphologyEx(imageSeg,closeImg,NULL,t,CV_MOP_CLOSE);
-	cvShowImage("closeImg",closeImg);*/
+	cvShowImage("closeImg",closeImg);
+
+
 	imageNoiseRem=noiseRemoval(imageSeg);
 #if ISDEBUG_TL
 	cvNamedWindow("imgseg");
@@ -204,9 +211,10 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 	cvWaitKey(5);
 #endif
 	//componentExtraction(imageNoiseRem,resize_TLR,TLDSend,found_TL);
-	componentExtractionTL(imageNoiseRem,resize_TLR,TLDSend);
+	componentExtractionTL(closeImg,resize_TLR,TLDSend);
 	cvReleaseImage(&imageSeg);
 	cvReleaseImage(&imageNoiseRem);
+	cvReleaseImage(&closeImg);
 }
 
 void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
@@ -534,7 +542,7 @@ int main()
 		hogSVMTrainTL(myHOG_horz,TRAIN,HORZ);
 	else
 		hogSVMTrainTL(myHOG_vertical,TRAIN,HORZ);
-
+	
 	//信号灯识别训练
 	if (TLRecTrain)
 	{
@@ -542,8 +550,14 @@ int main()
 		const int TLTypeNum=3;//包括非TL
 		HOGTrainingTrafficSign(TLRecPath,TLRecHOG,TLTypeNum,TLREC_WIDTH,TLREC_HEIGHT,"src//TLRec.xml");
 		TLRecSVM.load("src//TLRec.xml");
+
+		const String isTLPath="D:\\JY\\JY_TrainingSamples\\isTL";
+		const int isTLNum=2;
+		HOGTrainingTrafficSign(isTLPath,isTLHOG,isTLNum,TLREC_WIDTH,TLREC_HEIGHT,"src//isTL.xml");
+		isTLSVM.load("src//isTL.xml");
 	}else{
 		TLRecSVM.load("src//TLRec.xml");
+		isTLSVM.load("src//isTL.xml");
 	}
 	
 	//traffic sign training
@@ -643,8 +657,8 @@ void openMP_MultiThreadVideo()
 	bool saveFlag=false;
 	IplImage * frame,*copyFrame;
 	float connectResult[8]={0,0,0,0,0,0,0,0};
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\good5.avi");
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\2014.11.16\\1_clip.mp4");
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\TL_HORZ.avi");
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\2014.11.16\\1_clip.mp4");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
 	//findColorRange();
@@ -700,9 +714,9 @@ void openMP_MultiThreadVideo()
 		cvShowImage("TL",resize_TLR);
 		cvWaitKey(5);
 		//show the detection  result of TSR
-		namedWindow("TSR");
-		imshow("TSR",re_src);
-		waitKey(5);
+		//namedWindow("TSR");
+		//imshow("TSR",re_src);
+		//waitKey(5);
 #endif
 		if (saveFlag)
 		{

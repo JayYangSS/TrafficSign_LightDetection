@@ -1,6 +1,13 @@
 #include "std_tlr.h"
+#define IS_CUTIMG 1
+
 extern HOGDescriptor myHOG_vertical;
 extern HOGDescriptor myHOG_horz;
+extern HOGDescriptor TLRecHOG;
+extern HOGDescriptor isTLHOG;
+
+extern MySVM TLRecSVM;//识别红色信号灯类别的SVM分类器
+extern MySVM isTLSVM;//识别是否是信号灯
 extern bool TRAIN;
 extern bool HORZ;
 
@@ -66,49 +73,72 @@ bool BlackAroundLight(IplImage* srcImg,CvRect	iRect)
 	return flag;
 }
 
-/*
+
 //not using hole traffic ligh as samples,just use the square light
-bool IsLight(IplImage* srcImg,CvRect	iRect)
+int RecognizeLight(IplImage* srcImg,CvRect iRect)
 {
-	bool returnStatus = false;
-	int iWidth = srcImg->width,topX=iRect.x;
-	int iHeight = srcImg->height,topY=iRect.y;
-	int RectWidth,RectHeight;
-	if(iRect.width<15)RectWidth=15;
-	RectWidth=iRect.width;
-	if(iRect.height<30)RectHeight=30;
-	RectHeight=iRect.height;
-	bool flag=false;
+	CvSize cutSize;
+	cutSize.width=iRect.width;
+	cutSize.height=iRect.height;
+	IplImage *tmpCutImg=cvCreateImage(cutSize,srcImg->depth,srcImg->nChannels);
+	GetImageRect(srcImg,iRect,tmpCutImg);
+#if IS_CUTIMG
+	cvShowImage("tmpCutImg",tmpCutImg);
+	cvWaitKey(1);
+	char tmpName[100];
+	static int ppp=0;
+	ppp++;
+	sprintf_s(tmpName,"ImgCut//%d.jpg",ppp);
+	cvSaveImage(tmpName,tmpCutImg);
+#endif
 
+	Mat cutMat(tmpCutImg);
+	Mat tmpTLRec;
+	vector<float> descriptor;
 
+	//识别信号灯类别
+	resize(cutMat,tmpTLRec,Size(TLREC_WIDTH,TLREC_HEIGHT));
+	TLRecHOG.compute(tmpTLRec,descriptor,Size(8,8));
+	int DescriptorDim=descriptor.size();		
+	Mat SVMTLRecMat(1,DescriptorDim,CV_32FC1);
+	for(int i=0; i<DescriptorDim; i++)
+		SVMTLRecMat.at<float>(0,i) = descriptor[i];
 
-	//设置SVM+HOG处理区域
-	CvRect rect;
-	if(topX+25>iWidth||topX-20<0)return false;
-	else{
-		rect.x=iRect.x-20;
-		rect.width=45;
-	}
-
-	if(topY+40>iHeight||topY-30<0)return false;
-	else{
-		rect.y=iRect.y-30;
-		rect.height=70;
-	}
-
-
-	cvSetImageROI(srcImg,rect);
-	Mat SVMROI(srcImg);
-
-	cvResetImageROI(srcImg);//这一句少了就出错了啊！！
-	if(HORZ)
-		flag=BoxDetectTL(SVMROI,myHOG_horz,HORZ);
-	flag=BoxDetectTL(SVMROI,myHOG_vertical,HORZ);
-	//cvReleaseImage(&srcImg);
-	return flag;
+	int result=TLRecSVM.predict(SVMTLRecMat);
+	cvReleaseImage(&tmpCutImg);
+	return result;
 }
-*/
 
+
+
+int isTL(IplImage* srcImg,CvRect iRect)
+{
+	CvSize cutSize;
+	cutSize.width=iRect.width;
+	cutSize.height=iRect.height;
+	IplImage *tmpCutImg=cvCreateImage(cutSize,srcImg->depth,srcImg->nChannels);
+	GetImageRect(srcImg,iRect,tmpCutImg);
+#if IS_CUTIMG
+	cvShowImage("tmpCutImg",tmpCutImg);
+	cvWaitKey(1);
+#endif
+
+	Mat cutMat(tmpCutImg);
+	Mat tmpIsTL;
+	vector<float> descriptor;
+
+	//识别信号灯类别
+	resize(cutMat,tmpIsTL,Size(TLREC_WIDTH,TLREC_HEIGHT));
+	isTLHOG.compute(tmpIsTL,descriptor,Size(8,8));
+	int DescriptorDim=descriptor.size();		
+	Mat SVMTLRecMat(1,DescriptorDim,CV_32FC1);
+	for(int i=0; i<DescriptorDim; i++)
+		SVMTLRecMat.at<float>(0,i) = descriptor[i];
+
+	int result=isTLSVM.predict(SVMTLRecMat);
+	cvReleaseImage(&tmpCutImg);
+	return result;
+}
 
 
 

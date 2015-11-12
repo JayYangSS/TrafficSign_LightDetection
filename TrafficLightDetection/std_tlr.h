@@ -55,6 +55,9 @@ bool regionGrowFiltering(IplImage* inputImage,IplImage*colorSeg,CvRect iRect,CvR
 bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2);
 bool BoxDetectTL(Mat src_test,HOGDescriptor &myHOG,bool HORZ);
 bool BlackAroundLight(IplImage* srcImg,CvRect	iRect);
+int RecognizeLight(IplImage* srcImg,CvRect iRect);//return the TL recognition result
+int isTL(IplImage* srcImg,CvRect iRect);//ÅÐ¶ÏÊÇ·ñÎªÐÅºÅµÆ
+void GetImageRect(IplImage* orgImage, CvRect rectInImage, IplImage* imgRect);
 using namespace std;
 using namespace cv;
 

@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 #define IS_SAVE 0  //摄像头采集信息是否保存
-#define OPENMP 1//是否使用OPENMP并行处理
+#define OPENMP 0//是否使用OPENMP并行处理
 #define ISDEBUG_TL 0//调试时用来输出中间调试图像及信息(Traffic Light)
 #define ISDEBUG_TS 0//调试时用来输出中间调试图像及信息(Traffic Sign)
 #define IS_SHOW_RESULT 1//是否显示检测结果,不显示图像结果处理速度更快
