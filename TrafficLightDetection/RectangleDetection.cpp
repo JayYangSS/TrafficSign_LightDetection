@@ -7,7 +7,7 @@ void GetImageRect(IplImage* orgImage, CvRect rectInImage, IplImage* imgRect)
 	CvSize size;
 	size.width=rectInImage.width;
 	size.height=rectInImage.height;
-	//result=cvCreateImage( size, orgImage->depth, orgImage->nChannels );
+
 	//从图像中提取子图像
 	cvSetImageROI(orgImage,rectInImage);
 	cvCopy(orgImage,result);
@@ -50,28 +50,24 @@ bool isLighInBox(Mat src)
 	return false;
 }
 
-bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2)//p1为前行位，p2为左转位
+void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2)//p1为前行位，p2为左转位
 {
-	
 	const int iWidth = inputImage->width;
 	const int iHeight = inputImage->height;
-	IplImage* imageGrayScale = cvCreateImage(cvSize(iWidth,iHeight),IPL_DEPTH_8U,1);
-	int iWidthStep = imageGrayScale->widthStep; 
-	cvCvtColor(srcImage,imageGrayScale,CV_BGR2GRAY);
+	
+	//水平和竖直状态
 	bool VerticalReturnStatus = false;
 	bool HorzReturnStatus=false;
 
 	//横向检测框
 	int HorzRectHeight=(iRect.width+iRect.height)/2 + 6;
-	int HorzRectWidth=3*(HorzRectHeight-4)+6;
+	int HorzRectWidth=3*(HorzRectHeight-4)+3;
 	int HorzRectX1=0, HorzRectY1=0;
 	int HorzRectX2=0, HorzRectY2=0;
 
 
-	//int iSrcWidthStep = srcImage->widthStep;
-
 	//thresholding for graylevel differences between seedpoints and its neibours
-	const int grayThresholding =70;//70
+	const int grayThresholding =80;//70
 	const int RatioThreshold =  55;//检测框中黑色像素所占比例
 
 	//纵向检测框
@@ -89,62 +85,98 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 		HorzRectX1=iRect.x-HorzRectWidth/3*2;
 	}
 
+	//竖直检测窗设置
 	iDrawRectY2 = iDrawRectY1 + iDrawRectHeight;
 	iDrawRectX1 = iRect.x-3;
 	iDrawRectX2 = iDrawRectX1 + iDrawRectWidth;
 
+	//水平检测框设置
 	HorzRectX2= HorzRectX1+HorzRectWidth;
 	HorzRectY1= iRect.y-3;
 	HorzRectY2= HorzRectY1+HorzRectHeight;
 
 	if(HorzRectX1<0 || HorzRectY1<0 || HorzRectX2>=iWidth || HorzRectY2>=iHeight)
 	{
-		cvReleaseImage(&imageGrayScale);//when return the result, the image must be released, otherwise,the memory will be leaked
-		return HorzReturnStatus;
+		//cvReleaseImage(&imageGrayScale);//when return the result, the image must be released, otherwise,the memory will be leaked
+		return;
 	}
 	
 	if( iDrawRectX1<0 || iDrawRectY1<0 || iDrawRectX2>=iWidth || iDrawRectY2>=iHeight)
 	{
-		cvReleaseImage(&imageGrayScale);//when return the result, the image must be released, otherwise,the memory will be leaked
-		return VerticalReturnStatus;
+		//cvReleaseImage(&imageGrayScale);//when return the result, the image must be released, otherwise,the memory will be leaked
+		return;
 	}
 
+
+	//竖直方向统计黑色像素比例
+	CvRect VerticalRect;
+	VerticalRect.x=iDrawRectX1;
+	VerticalRect.y=iDrawRectY1;
+	VerticalRect.width=iDrawRectWidth;
+	VerticalRect.height=iDrawRectHeight;
+	IplImage*VerticalLight = cvCreateImage(cvSize(iDrawRectWidth,iDrawRectHeight),srcImage->depth,srcImage->nChannels);
+	GetImageRect(srcImage,VerticalRect,VerticalLight);
+	IplImage *VerticalGrayLight=cvCreateImage(cvSize(iDrawRectWidth,iDrawRectHeight),IPL_DEPTH_8U,1);
+	cvCvtColor(VerticalLight,VerticalGrayLight,CV_BGR2GRAY);
+	cvThreshold(VerticalGrayLight,VerticalGrayLight,0,255,CV_THRESH_OTSU);
+
+
+	/*
+	int iWidthStep = VerticalGrayLight->widthStep; 
 	int sum=0;
-	int grayValue=0;
-	//int bValue=0,gValue=0,rValue=0;
-	//int bgrMax=0,bgrMin=0;
-	unsigned char* pData;
-	//unsigned char* pSrcData;
-	for(int j=iDrawRectY1; j<=iDrawRectY2; j++){
-		pData = (unsigned char*)imageGrayScale->imageData + j*iWidthStep;
-		for(int i=iDrawRectX1; i<=iDrawRectX2; i++){
-			grayValue = pData[i];
-			if((grayValue<=grayThresholding))
+	int VerticalGrayValue=0;
+	unsigned char* pDataVertical;
+	for(int j=0; j<iDrawRectHeight; j++){
+		pDataVertical = (unsigned char*)VerticalGrayLight->imageData + j*iWidthStep;
+		for(int i=0; i<iDrawRectWidth; i++){
+			VerticalGrayValue = pDataVertical[i];
+			if((VerticalGrayValue<=grayThresholding))
 				sum++;
 		}
-	}	
+	}*/	
+
+	int cvVerticalSum=cvCountNonZero(VerticalGrayLight);
+	int verticalBlackNum=iDrawRectWidth*iDrawRectHeight-cvVerticalSum;//黑色像素点个数
+	cvReleaseImage(&VerticalLight);
+	cvReleaseImage(&VerticalGrayLight);
+
+
 
 	//水平方向统计黑色像素比例
+	CvRect HorzRect;
+	HorzRect.x=HorzRectX1;
+	HorzRect.y=HorzRectY1;
+	HorzRect.width=HorzRectWidth;
+	HorzRect.height=HorzRectHeight;
+	IplImage*HorzLight = cvCreateImage(cvSize(HorzRectWidth,HorzRectHeight),srcImage->depth,srcImage->nChannels);
+	GetImageRect(srcImage,HorzRect,HorzLight);
+	IplImage *HorzGrayLight=cvCreateImage(cvSize(HorzRectWidth,HorzRectHeight),IPL_DEPTH_8U,1);
+	cvCvtColor(HorzLight,HorzGrayLight,CV_BGR2GRAY);
+	cvThreshold(HorzGrayLight,HorzGrayLight,0,255,CV_THRESH_OTSU);
+	
+	
+/*	
+	int HorzWidthStep = HorzGrayLight->widthStep; 
 	int HorzSum=0;
-	for(int j=HorzRectY1; j<=HorzRectY2; j++){
-		pData = (unsigned char*)imageGrayScale->imageData + j*iWidthStep;
-		for(int i=HorzRectX1; i<=HorzRectX2; i++){
-			grayValue = pData[i];
-			if((grayValue<=grayThresholding))
+	int HorzGrayValue=0;
+	unsigned char* pDataHorz;
+	for(int j=0; j<HorzRectHeight; j++){
+		pDataHorz = (unsigned char*)HorzGrayLight->imageData + j*HorzWidthStep;
+		for(int i=0; i<HorzRectWidth; i++){
+			HorzGrayValue = pDataHorz[i];
+			//if((HorzGrayValue<=grayThresholding))
+			if((HorzGrayValue==0))
 				HorzSum++;
 		}
-	}	
+	}	*/
+	int cvHorzSum=cvCountNonZero(HorzGrayLight);
+	int horzBlackNum=HorzRectWidth*HorzRectHeight-cvHorzSum;
+	cvReleaseImage(&HorzLight);
+	cvReleaseImage(&HorzGrayLight);
+	
 
-	//竖直检测窗
-	iDrawRectHeight=iDrawRectY2-iDrawRectY1;
-	iDrawRectWidth=iDrawRectX2-iDrawRectX1;
-
-	//水平检测窗
-	HorzRectHeight=HorzRectY2-HorzRectY1;
-	HorzRectWidth=HorzRectX2-HorzRectX1;
-
-	int VerticalBlackRatio = (float)sum*100/(float)((iDrawRectWidth+1)*((float)iDrawRectHeight+1));//矩形框中黑色像素所占比例
-	int HorzBlackRatio=(float)HorzSum*100/(float)((HorzRectWidth+1)*((float)HorzRectHeight+1));//矩形框中黑色像素所占比例
+	int VerticalBlackRatio = (float)verticalBlackNum*100/(float)((iDrawRectWidth+1)*((float)iDrawRectHeight+1));//矩形框中黑色像素所占比例
+	int HorzBlackRatio=(float)horzBlackNum*100/(float)((HorzRectWidth+1)*((float)HorzRectHeight+1));//矩形框中黑色像素所占比例
 	
 #if ISDEBUG_TL
 	ofstream outfile;
@@ -165,10 +197,12 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	isLighInBox(tmpMat);
 #endif
 
-	int DetectResult=isTL(srcImage,iRect);cout<<"有无信号灯："<<DetectResult<<endl;
+	int DetectResult=isTL(srcImage,iRect);
 	if (DetectResult==1)
 	{
-		if(VerticalBlackRatio>=RatioThreshold&&VerticalBlackRatio<=90)
+		//cout<<"Horz Ratio:"<<HorzBlackRatio<<endl;
+		//cout<<"Vertical Ratio:"<<VerticalBlackRatio<<endl;
+		if(VerticalBlackRatio>=RatioThreshold&&VerticalBlackRatio<=93)
 			VerticalReturnStatus = true;
 		else if (HorzBlackRatio>=RatioThreshold&&HorzBlackRatio<=90)
 		{
@@ -204,9 +238,9 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 				//cout<<"禁止左转"<<endl;
 				*p2=1;
 				break;
-			case 2://右转
+			case 2://前行箭头
 				//cout<<"禁止右转"<<endl;
-				//*p3=1;
+				*p1=1;
 				break;
 			default:
 				break;
@@ -239,16 +273,14 @@ bool rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 				//cout<<"禁止左转"<<endl;
 				*p2=1;
 				break;
-			case 2://右转
+			case 2://前行箭头
 				//cout<<"禁止右转"<<endl;
-				//*p3=1;
+				*p1=1;
 				break;
 			default:
 				break;
 			}
 		}
 	}
-
-	cvReleaseImage(&imageGrayScale);
-	return VerticalReturnStatus;
+	return;
 }

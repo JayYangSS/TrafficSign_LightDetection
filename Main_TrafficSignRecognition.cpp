@@ -32,12 +32,12 @@ int Frame_pos;//µ±Ç°Ö¡Î»ÖÃ
 bool isTrain=false;//traffic signs
 bool TRAIN=false;//TL
 bool HORZ=false;//TL
-bool TLRecTrain=true;//是否训练信号灯识别分类器
-bool saveFlag=true;
+bool TLRecTrain=false;//是否训练信号灯识别分类器
+//bool saveFlag=true;
 Mat re_src;//for traffic signs detection 
 IplImage *resize_TLR=cvCreateImage(Size(800,600),8,3);
 
-vector<Rect> found_TL;//the bounding box for traffic lights
+//vector<Rect> found_TL;//the bounding box for traffic lights
 vector<Rect> found_TSR;//the bounding box for traffic signs
 Scalar colorMode[]={CV_RGB(255,255,0),CV_RGB(0,0,255),CV_RGB(255,0,0)};//the color mode for the traffic sign detection(Y,B,R)
 CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RectBlue;//neural networks for three different kinds of traffic signs 
@@ -169,9 +169,10 @@ void savePCA(string filepath,string outputPath)
 
 void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 {
-	IplImage *imageSeg=NULL,*imageNoiseRem =NULL;
+	IplImage *imageSeg=NULL;
+	//IplImage*imageNoiseRem =NULL;
 
-	found_TL.clear();
+	//found_TL.clear();
 	cvResize(frame,resize_TLR);
 	/*//此处先使用顶帽算法，再使用闭操作
 	IplImage* tmpGray=cvCreateImage(cvSize(frame->width,frame->height),IPL_DEPTH_8U,1);
@@ -193,16 +194,11 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 	cvReleaseStructuringElement(&t);*/
 
 	imageSeg = colorSegmentationTL(resize_TLR);
-
-
-
 	IplImage *closeImg=cvCreateImage(Size(imageSeg->width,imageSeg->height),imageSeg->depth,imageSeg->nChannels);
 	IplConvKernel *t=cvCreateStructuringElementEx(7,7,3,3,CV_SHAPE_ELLIPSE);
 	cvMorphologyEx(imageSeg,closeImg,NULL,t,CV_MOP_CLOSE);
-	cvShowImage("closeImg",closeImg);
-
-
-	imageNoiseRem=noiseRemoval(imageSeg);
+	//cvShowImage("closeImg",closeImg);
+	//imageNoiseRem=noiseRemoval(imageSeg);
 #if ISDEBUG_TL
 	cvNamedWindow("imgseg");
 	cvShowImage("imgseg",imageSeg);
@@ -213,7 +209,7 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 	//componentExtraction(imageNoiseRem,resize_TLR,TLDSend,found_TL);
 	componentExtractionTL(closeImg,resize_TLR,TLDSend);
 	cvReleaseImage(&imageSeg);
-	cvReleaseImage(&imageNoiseRem);
+	//cvReleaseImage(&imageNoiseRem);
 	cvReleaseImage(&closeImg);
 }
 
@@ -657,7 +653,7 @@ void openMP_MultiThreadVideo()
 	bool saveFlag=false;
 	IplImage * frame,*copyFrame;
 	float connectResult[8]={0,0,0,0,0,0,0,0};
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\TL_HORZ.avi");
+	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\RedFalsePositive.avi");
 	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\2014.11.16\\1_clip.mp4");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
@@ -714,9 +710,9 @@ void openMP_MultiThreadVideo()
 		cvShowImage("TL",resize_TLR);
 		cvWaitKey(5);
 		//show the detection  result of TSR
-		//namedWindow("TSR");
-		//imshow("TSR",re_src);
-		//waitKey(5);
+		namedWindow("TSR");
+		imshow("TSR",re_src);
+		waitKey(5);
 #endif
 		if (saveFlag)
 		{
