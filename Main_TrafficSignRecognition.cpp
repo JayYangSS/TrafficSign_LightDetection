@@ -576,8 +576,8 @@ int main()
 		RectBlueSVM.load("src//RectBlueTSR.xml");
 	}
 
-	openMP_MultiThreadVideo();
-	//openMP_MultiThreadCamera();
+	//openMP_MultiThreadVideo();
+	openMP_MultiThreadCamera();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -778,7 +778,11 @@ void openMP_MultiThreadCamera()
 	Drogonfly_ImgRead p;
 	p.Camera_Intial();
 #if IS_SAVE
-	CvVideoWriter *writer = cvCreateVideoWriter("cameraCapture6.avi",CV_FOURCC('X','V','I','D'),10,Size(800,600),1);
+	SYSTEMTIME stTime;
+	GetLocalTime(&stTime);
+	char *videoPath = new char[100];// "D:/123.dat";
+	sprintf(videoPath, "CamraVideo//Video_%04d%02d%02d%02d%02d%02d.avi", stTime.wYear, stTime.wMonth, stTime.wDay, stTime.wHour, stTime.wMinute, stTime.wSecond);
+	CvVideoWriter *writer = cvCreateVideoWriter(videoPath,CV_FOURCC('X','V','I','D'),10,Size(800,600),1);
 #endif
 
 	IplImage * src_frame,*copyFrame;
@@ -789,17 +793,18 @@ void openMP_MultiThreadCamera()
 		src_frame=p.Camera2IplImage();
 		float TSRSend[5]={0,0,0,0,0};//store the traffic signs recognition result
 		float TLDSend[3]={0,0,0};//store the traffic lights detection result
-		IplImage* frame=cvCreateImage(Size(800,600),src_frame->depth,src_frame->nChannels);
+		//IplImage* frame=cvCreateImage(Size(800,600),src_frame->depth,src_frame->nChannels);
 		int start=cvGetTickCount();
-		if(!frame)break;
+		if(!src_frame)break;
 		//MultiThread
 #if ISDEBUG_TL
 		cvNamedWindow("imgseg");
 #endif
 		//copyFrame=cvCloneImage(frame);
-		copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
-		cvResize(src_frame,frame);
-		cvCopy(frame,copyFrame);
+		copyFrame=cvCreateImage(Size(800,600),src_frame->depth,src_frame->nChannels);
+		//cvResize(src_frame,frame);
+		//cvCopy(frame,copyFrame);
+		cvResize(src_frame,copyFrame);
 
 #if OPENMP
 #pragma omp parallel sections
@@ -817,7 +822,7 @@ void openMP_MultiThreadCamera()
 			}
 		}
 #else
-		TSRecognitionPerFrame(frame,TSRSend);
+		//TSRecognitionPerFrame(frame,TSRSend);
 		TLDetectionPerFrame(copyFrame,TLDSend);
 #endif
 
@@ -827,15 +832,15 @@ void openMP_MultiThreadCamera()
 		cvShowImage("TL",resize_TLR);
 		cvWaitKey(5);
 		//show the detection  result of TSR
-		namedWindow("TSR");
-		imshow("TSR",re_src);
-		waitKey(5);
+		//namedWindow("TSR");
+		//imshow("TSR",re_src);
+		//waitKey(5);
 #endif
-
+	
 #if IS_SAVE
-		cvWriteFrame(writer,frame);
+		cvWriteFrame(writer,copyFrame);
 #endif
-		cvReleaseImage(&frame);
+		//cvReleaseImage(&frame);
 		cvReleaseImage(&copyFrame);
 		//get the union result
 		for (int i=0;i<5;i++)
