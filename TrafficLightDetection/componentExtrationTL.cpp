@@ -8,6 +8,8 @@
 #define RECT_FILTER 1
 
 extern deque<float> TLFilters[3];
+extern int TLCount[3];
+extern int TLCountThreshold;
 
 //识别nhls图像中矩形框内的颜色
 int RecColor(Mat img)
@@ -85,7 +87,7 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 	int containCount=0;//计算容器中有效检测结果数目
 
 	//检测结果滤波
-	if(p1==0&&p2==0)//未检测到信号灯
+/*	if(p1==0&&p2==0)//未检测到信号灯
 	{
 		for (int i=0;i<3;i++)
 		{
@@ -105,12 +107,33 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 			if (i==0)
 				cout<<"TSContainCount:"<<TSContainCount<<endl;
 #endif
-			if((float)(TSContainCount)/(float)TLFilters[i].size()>=0.4)
+			if((float)(TSContainCount)/(float)TLFilters[i].size()>=0.39)
+			{
 				TLDSend[i]=1.0;
+				TLCount[i]=0;//如果检测到，则计数器清零
+			}
+				
 			else
-				TLDSend[i]=0;
+			{
+				//TLDSend[i]=0;
+				if(TLCount[i]<TLCountThreshold+5)
+				{
+					TLCount[i]=TLCount[i]+1;//如果未检测到，则计数器加1
+				}
+				
+				if (TLCount[i]>TLCountThreshold)//如果丢失帧数大于阈值，则认为没有信号灯
+				{
+					TLDSend[i]=0;
+				}else
+				{//如果丢失帧数在阈值范围内，则认为还有信号灯
+					TLDSend[i]=1.0;
+				}
+			}
+				
 		}
-	}else{
+	}*/
+	
+//	else{
 		if (p1==1)//前行禁止灯
 		{
 			TLFilters[0].push_back(1.0);//red
@@ -123,12 +146,65 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 				if(*it==1.0)containCount++;
 				it++;
 			}
-			if ((float)(containCount)/(float)TLFilters[0].size()>=0.4)
+			if ((float)(containCount)/(float)TLFilters[0].size()>=0.39)
+			{
 				TLDSend[0]=1.0;//表示检测到红灯
+				TLCount[0]=0;//如果检测到，则计数器清零
+			}			
 			else
-				TLDSend[0]=0;
+			{
+				if(TLCount[0]<TLCountThreshold+5)//防止增加的过大溢出
+				{
+					TLCount[0]=TLCount[0]+1;//如果未检测到，则计数器加1
+				}
+
+				if (TLCount[0]>TLCountThreshold)//如果丢失帧数大于阈值，则认为没有信号灯
+				{
+					TLDSend[0]=0;
+				}else
+				{//如果丢失帧数在阈值范围内，则认为还有信号灯
+					TLDSend[0]=1.0;
+				}
+			}			
 			containCount=0;
+		}else{
+					TLFilters[0].push_back(0);
+					if (TLFilters[0].size()>5)
+						TLFilters[0].pop_front();
+
+					deque<float>::iterator it;
+					int TSContainCount=0;
+					it=TLFilters[0].begin();
+					while(it<TLFilters[0].end())
+					{
+						if (*it==1.0)TSContainCount++;
+						it++;
+					}
+
+					if((float)(TSContainCount)/(float)TLFilters[0].size()>=0.39)
+					{
+						TLDSend[0]=1.0;
+						TLCount[0]=0;//如果检测到，则计数器清零
+					}
+
+					else
+					{
+						//TLDSend[0]=0;
+						if(TLCount[0]<TLCountThreshold+5)
+						{
+							TLCount[0]=TLCount[0]+1;//如果未检测到，则计数器加1
+						}
+
+						if (TLCount[0]>TLCountThreshold)//如果丢失帧数大于阈值，则认为没有信号灯
+						{
+							TLDSend[0]=0;
+						}else
+						{//如果丢失帧数在阈值范围内，则认为还有信号灯
+							TLDSend[0]=1.0;
+						}
+					}
 		}
+
 
 		if(p2==1)//左转禁止
 		{
@@ -143,11 +219,65 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 				it++;
 			}
 			if ((float)(containCount)/(float)TLFilters[1].size()>=0.4)
+			{
+				TLCount[1]=0;//如果检测到，则计数器清零
 				TLDSend[1]=1.0;
+			}
+				
 			else
-				TLDSend[1]=0;
+			{
+				if(TLCount[1]<TLCountThreshold+5)//防止增加的过大溢出
+				{
+					TLCount[1]=TLCount[1]+1;//如果未检测到，则计数器加1
+				}
+
+				if (TLCount[1]>TLCountThreshold)//如果丢失帧数大于阈值，则认为没有信号灯
+				{
+					TLDSend[1]=0;
+				}else
+				{//如果丢失帧数在阈值范围内，则认为还有信号灯
+					TLDSend[1]=1.0;
+				}
+			}
 			containCount=0;
+		}else{
+			TLFilters[1].push_back(0);
+			if (TLFilters[1].size()>5)
+				TLFilters[1].pop_front();
+
+			deque<float>::iterator it;
+			int TSContainCount=0;
+			it=TLFilters[1].begin();
+			while(it<TLFilters[1].end())
+			{
+				if (*it==1.0)TSContainCount++;
+				it++;
+			}
+
+			if((float)(TSContainCount)/(float)TLFilters[1].size()>=0.39)
+			{
+				TLDSend[1]=1.0;
+				TLCount[1]=0;//如果检测到，则计数器清零
+			}
+
+			else
+			{
+				//TLDSend[0]=0;
+				if(TLCount[1]<TLCountThreshold+5)
+				{
+					TLCount[1]=TLCount[1]+1;//如果未检测到，则计数器加1
+				}
+
+				if (TLCount[1]>TLCountThreshold)//如果丢失帧数大于阈值，则认为没有信号灯
+				{
+					TLDSend[1]=0;
+				}else
+				{//如果丢失帧数在阈值范围内，则认为还有信号灯
+					TLDSend[1]=1.0;
+				}
+			}
 		}
+
 		/*暂时去掉右转检测
 		if(p3==1)//右转禁止
 		{
@@ -167,9 +297,9 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 				TLDSend[2]=0;
 			containCount=0;
 		}*/
-	}
+//	}
 
-	
+	//cout<<"count[0]:"<<TLCount[0]<<endl;
 	/*	if (r<1&&g<1)//红灯绿灯均无
 	{
 		for (int i=0;i<3;i++)

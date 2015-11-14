@@ -44,6 +44,8 @@ CvANN_MLP nnetwork,nnetwork_RoundRim,nnetwork_RectBlue;//neural networks for thr
 PCA pca,pca_RoundRim,pca_RectBlue;
 deque<float> signFilters[5];
 deque<float> TLFilters[3];
+int TLCount[3]={0,0,0};//用来进行结果的稳定
+int TLCountThreshold=10;//如果丢失10帧以上，则认为没有检测到了
 
 //test function
 void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RectBlue,CvANN_MLP &nnetwork,
@@ -198,13 +200,15 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 	IplConvKernel *t=cvCreateStructuringElementEx(7,7,3,3,CV_SHAPE_ELLIPSE);
 	cvMorphologyEx(imageSeg,closeImg,NULL,t,CV_MOP_CLOSE);
 	//cvShowImage("closeImg",closeImg);
-	//imageNoiseRem=noiseRemoval(imageSeg);
+	//cvWaitKey(5);
+
 #if ISDEBUG_TL
+	//imageNoiseRem=noiseRemoval(imageSeg);
 	cvNamedWindow("imgseg");
 	cvShowImage("imgseg",imageSeg);
 	cvWaitKey(5);
-	cvShowImage("imageNoiseRem",imageNoiseRem);
-	cvWaitKey(5);
+	//cvShowImage("imageNoiseRem",imageNoiseRem);
+	//cvWaitKey(5);
 #endif
 	//componentExtraction(imageNoiseRem,resize_TLR,TLDSend,found_TL);
 	componentExtractionTL(closeImg,resize_TLR,TLDSend);
@@ -653,8 +657,8 @@ void openMP_MultiThreadVideo()
 	bool saveFlag=false;
 	IplImage * frame,*copyFrame;
 	float connectResult[8]={0,0,0,0,0,0,0,0};
-	CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\RedFalsePositive.avi");
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\2014.11.16\\1_clip.mp4");
+	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\RedFalsePositive.avi");
+	CvCapture * cap=cvCreateFileCapture("CamraVideo\\Video_20151114103311.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
 	//findColorRange();
@@ -664,7 +668,7 @@ void openMP_MultiThreadVideo()
 		SYSTEMTIME stTime;
 		GetLocalTime(&stTime);
 		char *videoPath = new char[100];// "D:/123.dat";
-		sprintf(videoPath, "ResultVideo//Video_%04d%02d%02d%02d%02d%02d.avi", stTime.wYear, stTime.wMonth, stTime.wDay, stTime.wHour, stTime.wMinute, stTime.wSecond);
+		sprintf(videoPath, "ResultVideo//Video_%04d.%02d.%02d_%02d.%02d.%02d.avi", stTime.wYear, stTime.wMonth, stTime.wDay, stTime.wHour, stTime.wMinute, stTime.wSecond);
 		writer=cvCreateVideoWriter(videoPath,CV_FOURCC('X', 'V', 'I', 'D'), 20, cvGetSize(resize_TLR), 1);
 	}
 
@@ -710,9 +714,9 @@ void openMP_MultiThreadVideo()
 		cvShowImage("TL",resize_TLR);
 		cvWaitKey(5);
 		//show the detection  result of TSR
-		namedWindow("TSR");
-		imshow("TSR",re_src);
-		waitKey(5);
+		//namedWindow("TSR");
+		//imshow("TSR",re_src);
+		//waitKey(5);
 #endif
 		if (saveFlag)
 		{

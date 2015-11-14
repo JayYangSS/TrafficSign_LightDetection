@@ -181,8 +181,8 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 #if ISDEBUG_TL
 	ofstream outfile;
 	outfile.open(debugTLPath,ios::app);//ios::app： 以追加的方式打开文件
-	outfile<<"===black ratio===:"<<ratio<<endl;//输出到调试文件中
-	cout<<"===black ratio===:"<<ratio<<endl;//输出到控制台
+	outfile<<"===black VerticalBlackRatio===:"<<VerticalBlackRatio<<endl;//输出到调试文件中
+	cout<<"===black VerticalBlackRatio===:"<<VerticalBlackRatio<<endl;//输出到控制台
 	outfile.close();
 #endif
 
