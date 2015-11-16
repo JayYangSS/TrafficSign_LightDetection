@@ -26,7 +26,6 @@ MySVM TriangleSVM,RoundRimSVM,RectBlueSVM;
 MySVM TLRecSVM;//识别红色信号灯类别的SVM分类器
 MySVM isTLSVM;//识别识别是否为信号灯的SVM分类器
 
-int Frame_pos;//µ±Ç°Ö¡Î»ÖÃ
 
 //control TSR_flag
 bool isTrain=false;//traffic signs
@@ -36,6 +35,8 @@ bool TLRecTrain=false;//是否训练信号灯识别分类器
 //bool saveFlag=true;
 Mat re_src;//for traffic signs detection 
 IplImage *resize_TLR=cvCreateImage(Size(800,600),8,3);
+int g_slider_position=0;// slider position
+CvCapture * cap=NULL;
 
 //vector<Rect> found_TL;//the bounding box for traffic lights
 vector<Rect> found_TSR;//the bounding box for traffic signs
@@ -167,6 +168,11 @@ void savePCA(string filepath,string outputPath)
 	pcaFile.release();
 	fs.release();
 }
+
+void onTrackbarSlide(int pos)  
+{   
+	cvSetCaptureProperty(cap, CV_CAP_PROP_POS_FRAMES,pos);  
+}  
 
 
 void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
@@ -580,8 +586,8 @@ int main()
 		RectBlueSVM.load("src//RectBlueTSR.xml");
 	}
 
-	//openMP_MultiThreadVideo();
-	openMP_MultiThreadCamera();
+	openMP_MultiThreadVideo();
+	//openMP_MultiThreadCamera();
 	cvReleaseMat(&g_mat);
 	system("pause");
 }
@@ -654,13 +660,18 @@ void findColorRange()
 
 void openMP_MultiThreadVideo()
 {
-	bool saveFlag=false;
+	bool saveFlag=true;
 	IplImage * frame,*copyFrame;
 	float connectResult[8]={0,0,0,0,0,0,0,0};
-	//CvCapture * cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\RedFalsePositive.avi");
-	CvCapture * cap=cvCreateFileCapture("CamraVideo\\Video_20151114103311.avi");
+	//cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\RedFalsePositive.avi");
+	cap=cvCreateFileCapture("CamraVideo\\Video_20151115083303_clip5.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
+	int curPos=0;//current video frame position
+	int frameNum=(int)cvGetCaptureProperty(cap,CV_CAP_PROP_FRAME_COUNT);
+	cvNamedWindow("TL");
+	if(frameNum!=0)  
+		cvCreateTrackbar("position", "TL", &g_slider_position, frameNum,onTrackbarSlide);  
 	//findColorRange();
 
 	if (saveFlag)
@@ -679,6 +690,8 @@ void openMP_MultiThreadVideo()
 
 		int start=cvGetTickCount();
 		frame=cvQueryFrame(cap);
+		curPos=cvGetCaptureProperty(cap,CV_CAP_PROP_POS_FRAMES);
+		cvSetTrackbarPos("position","TL",curPos);
 		if(!frame)break;
 		//MultiThread
 #if ISDEBUG_TL
