@@ -67,7 +67,7 @@ void setLabel(cv::Mat& im, const std::string label, Rect r)
 }
 
 
-Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult)
+Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult,vector<Rect> &boundingBox)
 {
 	ShapeRecResult tmp;
 	if (src.channels()!=1)
@@ -106,6 +106,8 @@ Mat ShapeRecognize(Mat src,vector<ShapeRecResult>&shapeResult)
 			// Skip small or non-convex objects 
 			if (std::fabs(cv::contourArea(contours[i])) < MINIST_SIZE || !cv::isContourConvex(approx))
 				continue;
+
+			boundingBox.push_back(rect);
 			// Number of vertices of polygonal curve
 			int vtc = approx.size();
 			if (vtc == 3)

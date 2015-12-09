@@ -89,14 +89,14 @@ void CTracker::Update(vector<Point2d>& detections)
 
 	for(int i=0;i<assignment.size();i++)
 	{
-		if(assignment[i]!=-1)
+		if(assignment[i]!=-1)  //重要：表示第i个跟踪器跟踪第assignment[i]个目标
 		{
 			if(Cost[i][assignment[i]]>dist_thres)
 			{
 				assignment[i]=-1;
 				// Mark unassigned tracks, and increment skipped frames counter,
 				// when skipped frames counter will be larger than threshold, track will be deleted.
-				not_assigned_tracks.push_back(i);
+				not_assigned_tracks.push_back(i);//将没有进行目标跟踪的跟踪器的编号i放入not_assigned_tracks中
 			}
 		}
 		else
@@ -121,14 +121,14 @@ void CTracker::Update(vector<Point2d>& detections)
 		}
 	}
 	// -----------------------------------
-	// Search for unassigned detects
+	// Search for unassigned detects   处理未被跟踪的点
 	// -----------------------------------
 	vector<int> not_assigned_detections;
 	vector<int>::iterator it;
 	for(int i=0;i<detections.size();i++)
 	{
 		it=find(assignment.begin(), assignment.end(), i);
-		if(it==assignment.end())
+		if(it==assignment.end())//如果第i个目标没有被跟踪器跟踪
 		{
 			not_assigned_detections.push_back(i);
 		}
@@ -152,12 +152,12 @@ void CTracker::Update(vector<Point2d>& detections)
 	{
 		// If track updated less than one time, than filter state is not correct.
 
-		tracks[i]->KF->GetPrediction();
+		tracks[i]->KF->GetPrediction();//将预测值放入LastResult中（第一次给LastResult赋值）
 
 		if(assignment[i]!=-1) // If we have assigned detect, then update using its coordinates,
 		{
 			tracks[i]->skipped_frames=0;
-			tracks[i]->prediction=tracks[i]->KF->Update(detections[assignment[i]],1);
+			tracks[i]->prediction=tracks[i]->KF->Update(detections[assignment[i]],1);//校正值赋值给prediction（不是第一次赋值，第一次赋值在构造函数初始化时完成）
 		}else				  // if not continue using predictions
 		{
 			tracks[i]->prediction=tracks[i]->KF->Update(Point2f(0,0),0);	

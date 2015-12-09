@@ -28,11 +28,11 @@ TKalmanFilter::TKalmanFilter(Point2f pt,float dt,float Accel_noise_mag)
 	kalman->statePre.at<float>(0) = pt.x; // x
 	kalman->statePre.at<float>(1) = pt.y; // y
 
-	kalman->statePre.at<float>(2) = 0;
-	kalman->statePre.at<float>(3) = 0;
+	kalman->statePre.at<float>(2) = 0;//初始化时速度为0
+	kalman->statePre.at<float>(3) = 0;//初始化时速度为0
 
-	kalman->statePost.at<float>(0)=pt.x;
-	kalman->statePost.at<float>(1)=pt.y;
+	kalman->statePost.at<float>(0)=pt.x;//初始化时观测结果应该与状态相同
+	kalman->statePost.at<float>(1)=pt	.y;//初始化时观测结果应该与状态相同
 
 	setIdentity(kalman->measurementMatrix);
 

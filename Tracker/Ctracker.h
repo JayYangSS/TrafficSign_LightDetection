@@ -26,7 +26,7 @@ class CTracker
 public:
 	
 	float dt; 
-	float Accel_noise_mag;
+	float Accel_noise_mag;//‘À∂Ø‘Î…˘
 	double dist_thres;
 	int maximum_allowed_skipped_frames;
 	int max_trace_length;

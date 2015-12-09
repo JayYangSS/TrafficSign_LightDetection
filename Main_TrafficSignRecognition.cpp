@@ -6,6 +6,7 @@
 #include "TrafficLightDetection/std_tlr.h"
 #include <Windows.h>
 #include <queue>
+#include "Tracker/CTracker.h"
 
 
 //TL HOG descriptors
@@ -26,6 +27,11 @@ MySVM TriangleSVM,RoundRimSVM,RectBlueSVM;
 MySVM TLRecSVM;//识别红色信号灯类别的SVM分类器
 MySVM isTLSVM;//识别识别是否为信号灯的SVM分类器
 
+//kalman tracker
+vector<Point2d> TLCenters;
+CTracker TSRTracker(0.2, 0.5, 60.0, 10, 10);
+vector<Rect> trackBoxes;
+vector<Point2d> centers;
 
 //control TSR_flag
 bool isTrain=false;//traffic signs
@@ -257,8 +263,63 @@ void TSRecognitionPerFrame(IplImage *frame,float *TSRSend)
 	imshow("morph",noiseremove);
 	waitKey(2);
 #endif*/
+	centers.clear();
+	trackBoxes.clear();
+	Mat labeledImg = ShapeRecognize(nhs_image, shapeResult, trackBoxes);
+	getCentersFromBoxes(trackBoxes, centers);
+	//Kalman Track
+	if (centers.size()>0)
+	{
+		TSRTracker.Update(centers);
 
-	Mat labeledImg=ShapeRecognize(nhs_image,shapeResult);
+		cout << TSRTracker.tracks.size() << endl;
+
+		for (int i = 0; i<TSRTracker.tracks.size(); i++)
+		{
+			if (TSRTracker.tracks[i]->trace.size()>1)
+			{
+				for (int j = 0; j<TSRTracker.tracks[i]->trace.size() - 1; j++)
+				{
+					line(re_src, TSRTracker.tracks[i]->trace[j], TSRTracker.tracks[i]->trace[j + 1], colorMode[TSRTracker.tracks[i]->track_id % 3], 2, CV_AA);
+				}
+			}
+		}
+	}
+	//no bounding box was detected
+	else{
+		//对每一个跟踪器赋本帧的估计值（假设与上一帧目标位置相同）
+		for (int i = 0; i < TSRTracker.tracks.size(); i++)
+		{
+			if (TSRTracker.tracks[i]->trace.size()>1)
+			{
+				TSRTracker.tracks[i]->skipped_frames++;
+				//未检测到的话，则将tracks[i]->prediction的值更新为LastResult
+				TSRTracker.tracks[i]->prediction = TSRTracker.tracks[i]->KF->Update(Point2f(0, 0), 0);
+				if (TSRTracker.tracks[i]->skipped_frames>TSRTracker.maximum_allowed_skipped_frames)
+				{
+					delete TSRTracker.tracks[i];
+					TSRTracker.tracks.erase(TSRTracker.tracks.begin() + i);
+					//assignment.erase(assignment.begin() + i);
+					//i--;
+				}
+				else{//如果删掉这个跟踪的话，就不会执行下面的代码，防止数组越界错误
+					TSRTracker.tracks[i]->trace.push_back(TSRTracker.tracks[i]->prediction);
+					TSRTracker.tracks[i]->KF->LastResult = TSRTracker.tracks[i]->prediction;
+					for (int j = 0; j<TSRTracker.tracks[i]->trace.size() - 1; j++)
+					{
+						line(re_src, TSRTracker.tracks[i]->trace[j], TSRTracker.tracks[i]->trace[j + 1], colorMode[TSRTracker.tracks[i]->track_id % 3], 2, CV_AA);
+					}
+				}
+			}
+		}
+	}
+
+
+
+
+
+
+
 
 #if ISDEBUG_TS
 	namedWindow("labeledImg");
@@ -660,18 +721,18 @@ void findColorRange()
 
 void openMP_MultiThreadVideo()
 {
-	bool saveFlag=true;
+	bool saveFlag=false;//if true,save the detection result
 	IplImage * frame,*copyFrame;
 	float connectResult[8]={0,0,0,0,0,0,0,0};
 	//cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\RedFalsePositive.avi");
-	cap=cvCreateFileCapture("CamraVideo\\Video_20151115083303_clip5.avi");
+	cap = cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\TrafficSignVideo\\trafficSign6.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
 	int curPos=0;//current video frame position
 	int frameNum=(int)cvGetCaptureProperty(cap,CV_CAP_PROP_FRAME_COUNT);
-	cvNamedWindow("TL");
+	cvNamedWindow("TSR");
 	if(frameNum!=0)  
-		cvCreateTrackbar("position", "TL", &g_slider_position, frameNum,onTrackbarSlide);  
+		cvCreateTrackbar("position", "TSR", &g_slider_position, frameNum,onTrackbarSlide);  
 	//findColorRange();
 
 	if (saveFlag)
@@ -691,7 +752,7 @@ void openMP_MultiThreadVideo()
 		int start=cvGetTickCount();
 		frame=cvQueryFrame(cap);
 		curPos=cvGetCaptureProperty(cap,CV_CAP_PROP_POS_FRAMES);
-		cvSetTrackbarPos("position","TL",curPos);
+		cvSetTrackbarPos("position","TSR",curPos);
 		if(!frame)break;
 		//MultiThread
 #if ISDEBUG_TL
@@ -716,20 +777,20 @@ void openMP_MultiThreadVideo()
 			}
 		}
 #else
-		//TSRecognitionPerFrame(frame,TSRSend);
-		TLDetectionPerFrame(copyFrame,TLDSend);
+		TSRecognitionPerFrame(frame,TSRSend);
+		//TLDetectionPerFrame(copyFrame,TLDSend);
 		
 #endif
 
 #if IS_SHOW_RESULT
 		//show the detection  result of TL
-		cvNamedWindow("TL");
-		cvShowImage("TL",resize_TLR);
-		cvWaitKey(5);
+		//cvNamedWindow("TL");
+		//cvShowImage("TL",resize_TLR);
+		//cvWaitKey(5);
 		//show the detection  result of TSR
-		//namedWindow("TSR");
-		//imshow("TSR",re_src);
-		//waitKey(5);
+		namedWindow("TSR");
+		imshow("TSR",re_src);
+		waitKey(5);
 #endif
 		if (saveFlag)
 		{
