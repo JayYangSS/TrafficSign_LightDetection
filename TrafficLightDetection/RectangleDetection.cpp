@@ -50,10 +50,10 @@ bool isLighInBox(Mat src)
 	return false;
 }
 
-void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2)//p1为前行位，p2为左转位
+void rectangleDetection(Mat segImg,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2)//p1为前行位，p2为左转位
 {
-	const int iWidth = inputImage->width;
-	const int iHeight = inputImage->height;
+	const int iWidth = srcImage->width;
+	const int iHeight = srcImage->height;
 	
 	//水平和竖直状态
 	bool VerticalReturnStatus = false;
@@ -227,7 +227,7 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 
 
 			//TODO:识别信号灯指向
-			int result=RecognizeLight(srcImage,iRect);
+			int result=RecognizeLight(segImg);
 			switch(result)
 			{
 			case 0://圆形
@@ -262,7 +262,7 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 
 
 			//TODO:识别信号灯指向
-			int result=RecognizeLight(srcImage,iRect);
+			int result = RecognizeLight(segImg);
 			switch(result)
 			{
 			case 0://圆形

@@ -55,9 +55,19 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 	Rect contourRect;
 	Mat inputImg(inputImage);
 	Mat edge;
-	Canny(inputImg,edge,0,50,5);
+	Canny(inputImg,edge,20,50,5);
 	findContours(edge,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_SIMPLE);
-	
+
+	//draw the contours
+	Mat result(inputImg.size(), CV_8U, Scalar(255));
+	cv::drawContours(result, contours,-1, Scalar(0), 1);
+	cv::imshow("contours", result);
+	waitKey(1);
+	imshow("inputImg", inputImg);
+	waitKey(1);
+	imshow("edges", edge);
+	waitKey(1);
+
 	for (int i=0;i<contours.size();i++)
 	{
 		vector<Point> contour=contours[i];
@@ -79,7 +89,7 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 		//get the color in the contour
 		Mat tempMat=inputImg(contourRect);
 		int iColor=RecColor(tempMat);
-		rectangleDetection(inputImage,srcImage,iRect,iColor,&p1,&p2);
+		rectangleDetection(tempMat, srcImage, iRect, iColor, &p1, &p2);
 	}
 		
 	//filter the result to make it stable

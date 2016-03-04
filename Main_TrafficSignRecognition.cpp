@@ -660,11 +660,11 @@ void findColorRange()
 
 void openMP_MultiThreadVideo()
 {
-	bool saveFlag=true;
+	bool saveFlag=false;
 	IplImage * frame,*copyFrame;
 	float connectResult[8]={0,0,0,0,0,0,0,0};
 	//cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\RedFalsePositive.avi");
-	cap=cvCreateFileCapture("CamraVideo\\Video_20151115083303_clip5.avi");
+	cap=cvCreateFileCapture("CamraVideo\\Video_20151114092619_clip.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
 	int curPos=0;//current video frame position

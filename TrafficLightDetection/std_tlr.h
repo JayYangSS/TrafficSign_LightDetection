@@ -52,10 +52,10 @@ IplImage* noiseRemoval2(IplImage* inputImage);
 IplImage* fixImage(IplImage* colorseg,IplImage* tophat);
 bool sizeFiltering(CvRect rect);
 bool regionGrowFiltering(IplImage* inputImage,IplImage*colorSeg,CvRect iRect,CvRect& oRect,vector<Rect> &found_filtered);
-void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2);
+void rectangleDetection(Mat inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2);
 bool BoxDetectTL(Mat src_test,HOGDescriptor &myHOG,bool HORZ);
 bool BlackAroundLight(IplImage* srcImg,CvRect	iRect);
-int RecognizeLight(IplImage* srcImg,CvRect iRect);//return the TL recognition result
+int RecognizeLight(Mat segImg);//return the TL recognition result
 int isTL(IplImage* srcImg,CvRect iRect);//ÅÐ¶ÏÊÇ·ñÎªÐÅºÅµÆ
 void GetImageRect(IplImage* orgImage, CvRect rectInImage, IplImage* imgRect);
 using namespace std;

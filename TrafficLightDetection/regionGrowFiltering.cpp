@@ -75,38 +75,71 @@ bool BlackAroundLight(IplImage* srcImg,CvRect	iRect)
 
 
 //not using hole traffic ligh as samples,just use the square light
-int RecognizeLight(IplImage* srcImg,CvRect iRect)
-{
-	CvSize cutSize;
-	cutSize.width=iRect.width;
-	cutSize.height=iRect.height;
-	IplImage *tmpCutImg=cvCreateImage(cutSize,srcImg->depth,srcImg->nChannels);
-	GetImageRect(srcImg,iRect,tmpCutImg);
-#if IS_CUTIMG
-	cvShowImage("tmpCutImg",tmpCutImg);
-	cvWaitKey(1);
-	char tmpName[100];
-	static int ppp=0;
-	ppp++;
-	sprintf_s(tmpName,"ImgCut//%d.jpg",ppp);
-	cvSaveImage(tmpName,tmpCutImg);
-#endif
+int RecognizeLight(Mat segImg)
+{	
+	Mat edge,binImg;
+	vector<vector<Point>> contour;
+	const int cols = segImg.cols;
+	const int rows = segImg.rows;
+	const double y_epsTh = 1;
+	const double x_epsTh = 1;
+	int center_x = cols / 2;
+	int center_y = rows / 2;
+	double x_eps = 0;
+	double y_eps = 0;
 
-	Mat cutMat(tmpCutImg);
-	Mat tmpTLRec;
-	vector<float> descriptor;
+	//define the recognition result
+	const int circular_go = 0;
+	const int direction_left = 1;
+	const int direction_right = 2;
 
-	//识别信号灯类别
-	resize(cutMat,tmpTLRec,Size(TLREC_WIDTH,TLREC_HEIGHT));
-	TLRecHOG.compute(tmpTLRec,descriptor,Size(8,8));
-	int DescriptorDim=descriptor.size();		
-	Mat SVMTLRecMat(1,DescriptorDim,CV_32FC1);
-	for(int i=0; i<DescriptorDim; i++)
-		SVMTLRecMat.at<float>(0,i) = descriptor[i];
+	static int count = 0;
 
-	int result=TLRecSVM.predict(SVMTLRecMat);
-	cvReleaseImage(&tmpCutImg);
-	return result;
+	//find contours
+	threshold(segImg, binImg, 50, 255, THRESH_BINARY_INV);
+	imshow("segImg",segImg);
+	waitKey(1);
+	imshow("binImg", binImg);
+	waitKey(1);
+
+	//save the binary image
+	char img_name[50];
+	sprintf_s(img_name, "D:\\Img\\%d.jpg", count);
+	imwrite(img_name, binImg);
+	waitKey(1);
+	count++;
+
+	Canny(binImg, edge, 0, 50, 5);
+	
+	imshow("edge", edge);
+	waitKey(1);
+	findContours(edge, contour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+
+	cout << "contour size:"<<contour.size() << endl;
+	//use the convexity to determine whether it is the arrow TL
+	bool isConvex = isContourConvex(contour[0]);
+	if (isConvex){
+		cout << "convex" << endl;
+		return 0;//return the circular recognition result
+	}
+	
+	//calculate the moments od the TL
+	Moments TLMoments = moments(segImg, true);
+	int gravityCenter_x = (int)(TLMoments.m10 / TLMoments.m00);
+	int gravityCenter_y = (int)(TLMoments.m01 / TLMoments.m00);
+	y_eps = gravityCenter_y - center_y;
+	x_eps = gravityCenter_x - center_x;
+
+	//return the recogintion result
+	if (y_eps > y_epsTh&&abs(x_eps)<x_epsTh){
+		return circular_go;
+	}
+	if (x_eps<(0 - x_epsTh) && abs(y_eps) < y_epsTh){
+		return direction_left;//return the left arrow recognition result
+	}
+	if (x_eps>x_epsTh&&abs(y_eps) < y_epsTh){
+		return direction_right;//return the right arrow recognition result
+	}
 }
 
 
