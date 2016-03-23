@@ -7,6 +7,8 @@
 #include <Windows.h>
 #include <queue>
 
+//the data to be send
+vector<double> data;
 
 //TL HOG descriptors
 Size Win_vertical(15,30),block_vertical(5,10),blockStride_vertical(5,5),cell_vertical(5,5);
@@ -539,7 +541,7 @@ int main()
 {
 	//socket
 	SocketInit();
-	g_mat = cvCreateMat(10, 1, CV_32FC1);//transmit data
+	//g_mat = cvCreateMat(10, 1, CV_32FC1);//transmit data
 
 	//TL detection HOG descriptor
 	CvFont font; 
@@ -588,7 +590,7 @@ int main()
 
 	openMP_MultiThreadVideo();
 	//openMP_MultiThreadCamera();
-	cvReleaseMat(&g_mat);
+	//cvReleaseMat(&g_mat);
 	system("pause");
 }
 
@@ -762,10 +764,15 @@ void openMP_MultiThreadVideo()
 		//socket
 		if (!gb_filled)
 		{
-			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (int)(1000*(float)getTickCount()/getTickFrequency()-startTime)%1000;//time stamp,防止溢出		
-			//put the result into the g_mat to transmit
-			for (int i=1;i<=8;i++)
-				*(float *)CV_MAT_ELEM_PTR(*g_mat, i, 0)=connectResult[i-1];
+			//*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (int)(1000*(float)getTickCount()/getTickFrequency()-startTime)%1000;//time stamp,防止溢出		
+			////put the result into the g_mat to transmit
+			//for (int i=1;i<=8;i++)
+			//	*(float *)CV_MAT_ELEM_PTR(*g_mat, i, 0)=connectResult[i-1];
+			//gb_filled = true;
+			int timeStamp= (int)(1000 * (float)getTickCount() / getTickFrequency() - startTime) % 1000;//time stamp,防止溢出	
+			data.push_back(timeStamp);
+			for (int i = 1; i <= 8; i++)
+				data.push_back(connectResult[i - 1]);
 			gb_filled = true;
 		}
 
@@ -877,10 +884,10 @@ void openMP_MultiThreadCamera()
 		//socket
 		if (!gb_filled)
 		{
-			*(float *)CV_MAT_ELEM_PTR(*g_mat, 0, 0) = (int)(1000*(float)getTickCount()/getTickFrequency()-startTime)%1000;//time stamp,防止溢出			
-			//put the result into the g_mat to transmit
-			for (int i=1;i<=8;i++)
-				*(float *)CV_MAT_ELEM_PTR(*g_mat, i, 0)=connectResult[i-1];
+			int timeStamp = (int)(1000 * (float)getTickCount() / getTickFrequency() - startTime) % 1000;//time stamp,防止溢出	
+			data.push_back(timeStamp);
+			for (int i = 1; i <= 8; i++)
+				data.push_back(connectResult[i - 1]);
 			gb_filled = true;
 		}
 
