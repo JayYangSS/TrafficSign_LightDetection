@@ -24,7 +24,7 @@
 #define GREEN_PIXEL_LABEL 255
 #define RED_PIXEL_LABEL 128
 #define NON_BLOB_PIXEL_LABEL 0
-#define ROIHeight 360
+#define ROIHeight 600
 #define ROIWidth 0
 #define PosSamNO    523 //正样本个数
 #define HORZ_PosSamNO    36 //正样本个数

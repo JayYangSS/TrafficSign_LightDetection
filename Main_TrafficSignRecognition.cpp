@@ -36,7 +36,7 @@ bool HORZ=false;//TL
 bool TLRecTrain=false;//是否训练信号灯识别分类器
 //bool saveFlag=true;
 Mat re_src;//for traffic signs detection 
-IplImage *resize_TLR=cvCreateImage(Size(800,600),8,3);
+IplImage *resize_TLR=cvCreateImage(Size(800,600),IPL_DEPTH_8U,3);
 int g_slider_position=0;// slider position
 CvCapture * cap=NULL;
 
@@ -203,12 +203,34 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 	cvReleaseImage(&tmpTophat);
 	cvReleaseStructuringElement(&t);*/
 
+
+	//historam equalization
+	//IplImage *hsvImg = cvCreateImage(Size(resize_TLR->width, resize_TLR->height), resize_TLR->depth, 3);
+	//cvCvtColor(resize_TLR, hsvImg, CV_BGR2HSV);
+	//IplImage *hImg = cvCreateImage(Size(resize_TLR->width, resize_TLR->height), resize_TLR->depth, CV_8UC1);
+	//IplImage *sImg = cvCreateImage(Size(resize_TLR->width, resize_TLR->height), resize_TLR->depth, CV_8UC1);
+	//IplImage *vImg = cvCreateImage(Size(resize_TLR->width, resize_TLR->height), resize_TLR->depth, CV_8UC1);
+	//cvSplit(hsvImg, hImg, sImg, vImg, NULL);
+	//cvEqualizeHist(vImg, vImg);
+	//cvMerge(hImg, sImg, vImg, NULL,hsvImg);
+	//cvCvtColor(hsvImg, resize_TLR, CV_HSV2BGR);
+
+	//cvReleaseImage(&hsvImg);
+	//cvReleaseImage(&hImg);
+	//cvReleaseImage(&sImg);
+	//cvReleaseImage(&vImg);
+	
+
 	imageSeg = colorSegmentationTL(resize_TLR);
+	cvShowImage("imageSeg", imageSeg);
+	cvWaitKey(5);
+
 	IplImage *closeImg=cvCreateImage(Size(imageSeg->width,imageSeg->height),imageSeg->depth,imageSeg->nChannels);
 	IplConvKernel *t=cvCreateStructuringElementEx(7,7,3,3,CV_SHAPE_ELLIPSE);
 	cvMorphologyEx(imageSeg,closeImg,NULL,t,CV_MOP_CLOSE);
-	//cvShowImage("closeImg",closeImg);
-	//cvWaitKey(5);
+	//cvMorphologyEx(imageSeg, closeImg, NULL, t, CV_MOP_OPEN);
+	cvShowImage("closeImg",closeImg);
+	cvWaitKey(5);
 
 #if ISDEBUG_TL
 	//imageNoiseRem=noiseRemoval(imageSeg);
@@ -665,8 +687,8 @@ void openMP_MultiThreadVideo()
 	bool saveFlag=true;
 	IplImage * frame,*copyFrame;
 	float connectResult[8]={0,0,0,0,0,0,0,0};
-	//cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\RedFalsePositive.avi");
-	cap=cvCreateFileCapture("CamraVideo\\Video_20151115083303_clip5.avi");
+	//cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\goodLight.avi");
+	cap=cvCreateFileCapture("CamraVideo\\Video_20160331095801.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
 	int curPos=0;//current video frame position

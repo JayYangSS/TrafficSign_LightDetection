@@ -54,6 +54,8 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 	vector<vector<Point>>contours;
 	Rect contourRect;
 	Mat inputImg(inputImage);
+	
+
 	Mat edge;
 	Canny(inputImg,edge,0,50,5);
 	findContours(edge,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_SIMPLE);

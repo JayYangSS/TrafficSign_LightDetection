@@ -137,8 +137,7 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 
 	int cvVerticalSum=cvCountNonZero(VerticalGrayLight);
 	int verticalBlackNum=iDrawRectWidth*iDrawRectHeight-cvVerticalSum;//黑色像素点个数
-	cvReleaseImage(&VerticalLight);
-	cvReleaseImage(&VerticalGrayLight);
+	
 
 
 
@@ -171,8 +170,7 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	}	*/
 	int cvHorzSum=cvCountNonZero(HorzGrayLight);
 	int horzBlackNum=HorzRectWidth*HorzRectHeight-cvHorzSum;
-	cvReleaseImage(&HorzLight);
-	cvReleaseImage(&HorzGrayLight);
+	
 	
 
 	int VerticalBlackRatio = (float)verticalBlackNum*100/(float)((iDrawRectWidth+1)*((float)iDrawRectHeight+1));//矩形框中黑色像素所占比例
@@ -198,6 +196,14 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 #endif
 
 	int DetectResult=isTL(srcImage,iRect);
+	//int DetectResult = isTL(srcImage, VerticalRect);
+
+	cvReleaseImage(&VerticalLight);
+	cvReleaseImage(&VerticalGrayLight);
+	cvReleaseImage(&HorzLight);
+	cvReleaseImage(&HorzGrayLight);
+
+	//int DetectResult = 1;
 	if (DetectResult==1)
 	{
 		//cout<<"Horz Ratio:"<<HorzBlackRatio<<endl;
