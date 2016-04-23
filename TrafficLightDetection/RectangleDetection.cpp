@@ -1,5 +1,137 @@
 #include "std_tlr.h"
 
+//reference paper:Suspend Traffic Lights Detection and Distance Estimation Using Color Features
+//when a sufficient color pixel density is found, black pixel density is computed inside the other two
+//corresponding blocks,the other two blocks must be almost dark.
+bool checkOtherBlocksBlackRatio(IplImage* TLImg, int iColor, bool isVertical){
+	
+	int height = TLImg->height;
+	int width = TLImg->width;
+	int widthStep = TLImg->widthStep;
+	int totalNum = height*width;
+	
+	cvShowImage("TLImg", TLImg);
+	cvWaitKey(5);
+	//vertical
+	if (isVertical){
+		//process the green light
+		if (iColor == GREEN_PIXEL_LABEL){
+			int j = 0;
+			int greenBlackNum1 = 0;
+			int greenBlackNum2 = 0;
+
+			//calculate the first block
+			for (; j < height / 3; j++){
+				uchar* in = (uchar*)TLImg->imageData + j* widthStep;
+				for (int i = 0; i < width; i++){
+					if (in[i] == 0)greenBlackNum1++;
+				}
+			}
+			float blackRatio1 = (float)(greenBlackNum1 * 3) / (float)totalNum;
+
+			//calculate the second block
+			for (; j < height *2/ 3; j++){
+				uchar* in = (uchar*)TLImg->imageData + j* widthStep;
+				for (int i = 0; i < width; i++){
+					if (in[i] == 0)greenBlackNum2++;
+				}
+			}
+			float blackRatio2 = (float)(greenBlackNum2 * 3) / (float)totalNum;
+
+			if (blackRatio1>0.7&&blackRatio2>0.7)return true;
+			else
+				return false;
+		}
+		//process the red light
+		else{
+			int j = height / 3;
+			int redBlackNum1 = 0;
+			int redBlackNum2 = 0;
+
+			//calculate the first block
+			for (; j < height *2/ 3; j++){
+				uchar* in = (uchar*)TLImg->imageData + j* widthStep;
+				for (int i = 0; i < width; i++){
+					if (in[i] == 0)redBlackNum1++;
+				}
+			}
+			float blackRatio1 = (float)(redBlackNum1 * 3) / (float)totalNum;
+
+			//calculate the second block
+			for (; j < height ; j++){
+				uchar* in = (uchar*)TLImg->imageData + j* widthStep;
+				for (int i = 0; i < width; i++){
+					if (in[i] == 0)redBlackNum2++;
+				}
+			}
+			float blackRatio2 = (float)(redBlackNum2 * 3) / (float)totalNum;
+
+			if (blackRatio1>0.5&&blackRatio2>0.5)return true;
+			else
+				return false;
+		}
+	}
+	//horizental
+	else{
+		//process the green light
+		if (iColor == GREEN_PIXEL_LABEL){
+			int greenBlackNum1 = 0;
+			int greenBlackNum2 = 0;
+
+			//calculate the first block
+			for (int j=0; j < height ; j++){
+				uchar* in = (uchar*)TLImg->imageData + j* widthStep;
+				for (int i = 0; i < width/3; i++){
+					if (in[i] == 0)greenBlackNum1++;
+				}
+			}
+			float blackRatio1 = (float)(greenBlackNum1 * 3) / (float)totalNum;
+
+			//calculate the second block
+			for (int j = 0; j < height ; j++){
+				uchar* in = (uchar*)TLImg->imageData + j* widthStep;
+				for (int i = width/3; i < width*2/3; i++){
+					if (in[i] == 0)greenBlackNum2++;
+				}
+			}
+			float blackRatio2 = (float)(greenBlackNum2 * 3) / (float)totalNum;
+
+			if (blackRatio1>0.8&&blackRatio2>0.9)return true;
+			else
+				return false;
+		}
+		//process the red light
+		else{
+			int redBlackNum1 = 0;
+			int redBlackNum2 = 0;
+
+			//calculate the first block
+			for (int j=0; j < height ; j++){
+				uchar* in = (uchar*)TLImg->imageData + j* widthStep;
+				for (int i = width/3; i < 2*width/3; i++){
+					if (in[i] == 0)redBlackNum1++;
+				}
+			}
+			float blackRatio1 = (float)(redBlackNum1 * 3) / (float)totalNum;
+
+			//calculate the second block
+			for (int j=0; j < height; j++){
+				uchar* in = (uchar*)TLImg->imageData + j* widthStep;
+				for (int i = 2*width/3; i < width; i++){
+					if (in[i] == 0)redBlackNum2++;
+				}
+			}
+			float blackRatio2 = (float)(redBlackNum2 * 3) / (float)totalNum;
+
+			if (blackRatio1>0.5&&blackRatio2>0.5)return true;
+			else
+				return false;
+		}
+	}
+}
+
+
+
 void GetImageRect(IplImage* orgImage, CvRect rectInImage, IplImage* imgRect)
 {
 	//从图像orgImage中提取一块（rectInImage）子图像imgRect
@@ -50,6 +182,7 @@ bool isLighInBox(Mat src)
 	return false;
 }
 
+
 void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2)//p1为前行位，p2为左转位
 {
 	const int iWidth = inputImage->width;
@@ -71,23 +204,28 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	const int RatioThreshold =  55;//检测框中黑色像素所占比例
 
 	//纵向检测框
-	int iDrawRectWidth = (iRect.width+iRect.height)/2 + 6;
-	int iDrawRectHeight = 3*(iDrawRectWidth-4)+6;
+	//int iDrawRectWidth = (iRect.width+iRect.height)/2 + 6;
+	int iDrawRectWidth = (iRect.width + iRect.height)/2 *5/ 3;
+	//int iDrawRectHeight = 3*(iDrawRectWidth-4)+6;
+	int iDrawRectHeight;
 	int iDrawRectX1=0, iDrawRectY1=0;
 	int iDrawRectX2=0, iDrawRectY2=0;
 
 	if(iColor==RED_PIXEL_LABEL){
-		iDrawRectY1 = iRect.y - 3;
+		iDrawRectHeight = iDrawRectWidth * 7 / 3;
+		iDrawRectY1 = iRect.y - iDrawRectWidth /4;
 		HorzRectX1= iRect.x-3;
+		///iDrawRectHeight = iDrawRectWidth * 7 / 3;
 	}
 	else if(iColor == GREEN_PIXEL_LABEL){
+		iDrawRectHeight = iDrawRectWidth * 8 / 3;
 		iDrawRectY1 = iRect.y-iDrawRectHeight/3*2;
 		HorzRectX1=iRect.x-HorzRectWidth/3*2;
 	}
 
 	//竖直检测窗设置
 	iDrawRectY2 = iDrawRectY1 + iDrawRectHeight;
-	iDrawRectX1 = iRect.x-3;
+	iDrawRectX1 = iRect.x - iDrawRectWidth/5;
 	iDrawRectX2 = iDrawRectX1 + iDrawRectWidth;
 
 	//水平检测框设置
@@ -120,6 +258,10 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	cvCvtColor(VerticalLight,VerticalGrayLight,CV_BGR2GRAY);
 	cvThreshold(VerticalGrayLight,VerticalGrayLight,0,255,CV_THRESH_OTSU);
 
+	//get the other two  blocks black ration (vertical)
+
+	bool verticalBlackLimit = checkOtherBlocksBlackRatio(VerticalGrayLight, iColor,true);
+
 
 	/*
 	int iWidthStep = VerticalGrayLight->widthStep; 
@@ -135,8 +277,8 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 		}
 	}*/	
 
-	int cvVerticalSum=cvCountNonZero(VerticalGrayLight);
-	int verticalBlackNum=iDrawRectWidth*iDrawRectHeight-cvVerticalSum;//黑色像素点个数
+	//int cvVerticalSum=cvCountNonZero(VerticalGrayLight);
+	//int verticalBlackNum=iDrawRectWidth*iDrawRectHeight-cvVerticalSum;//黑色像素点个数
 	
 
 
@@ -168,13 +310,14 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 				HorzSum++;
 		}
 	}	*/
-	int cvHorzSum=cvCountNonZero(HorzGrayLight);
-	int horzBlackNum=HorzRectWidth*HorzRectHeight-cvHorzSum;
+	/*int cvHorzSum=cvCountNonZero(HorzGrayLight);
+	int horzBlackNum=HorzRectWidth*HorzRectHeight-cvHorzSum;*/
 	
-	
+	//get the other two  blocks black ration (horizental)
+	bool horizBlackLimit = checkOtherBlocksBlackRatio(HorzGrayLight, iColor, false);
 
-	int VerticalBlackRatio = (float)verticalBlackNum*100/(float)((iDrawRectWidth+1)*((float)iDrawRectHeight+1));//矩形框中黑色像素所占比例
-	int HorzBlackRatio=(float)horzBlackNum*100/(float)((HorzRectWidth+1)*((float)HorzRectHeight+1));//矩形框中黑色像素所占比例
+	//int VerticalBlackRatio = (float)verticalBlackNum*100/(float)((iDrawRectWidth+1)*((float)iDrawRectHeight+1));//矩形框中黑色像素所占比例
+	//int HorzBlackRatio=(float)horzBlackNum*100/(float)((HorzRectWidth+1)*((float)HorzRectHeight+1));//矩形框中黑色像素所占比例
 	
 #if ISDEBUG_TL
 	ofstream outfile;
@@ -203,14 +346,14 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	cvReleaseImage(&HorzLight);
 	cvReleaseImage(&HorzGrayLight);
 
-	//int DetectResult = 1;
+	//DetectResult = 1;
 	if (DetectResult==1)
 	{
-		//cout<<"Horz Ratio:"<<HorzBlackRatio<<endl;
-		//cout<<"Vertical Ratio:"<<VerticalBlackRatio<<endl;
-		if(VerticalBlackRatio>=RatioThreshold&&VerticalBlackRatio<=93)
+		//if(VerticalBlackRatio>=RatioThreshold&&VerticalBlackRatio<=93)
+		if (verticalBlackLimit)
 			VerticalReturnStatus = true;
-		else if (HorzBlackRatio>=RatioThreshold&&HorzBlackRatio<=90)
+		//else if (HorzBlackRatio>=RatioThreshold&&HorzBlackRatio<=90)
+		else if (horizBlackLimit)
 		{
 			HorzReturnStatus=true;
 		}
