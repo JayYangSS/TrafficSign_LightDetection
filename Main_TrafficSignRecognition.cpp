@@ -12,8 +12,9 @@ vector<double> data;
 
 //TL HOG descriptors
 Size Win_vertical(15,30),block_vertical(5,10),blockStride_vertical(5,5),cell_vertical(5,5);
+Size Win_horz(30, 15), block_horz(10, 5), blockStride_horz(5, 5), cell_horz(5, 5);
 HOGDescriptor myHOG_vertical(Win_vertical,block_vertical,blockStride_vertical,cell_vertical,9,1,-1.0,0,0.2,true,64);
-HOGDescriptor myHOG_horz(Size(36,12),Size(12,6),Size(6,6),Size(6,6),9,1,-1.0,0,0.2,true,64);
+HOGDescriptor myHOG_horz(Win_horz, block_horz, blockStride_horz, cell_horz, 9, 1, -1.0, 0, 0.2, true, 64);
 
 //标志牌HOG特征
 HOGDescriptor TriangleHOG(Size(40,40),Size(10,10),Size(5,5),Size(5,5),9,1,-1.0,0,0.2,true,64);
@@ -26,7 +27,9 @@ HOGDescriptor isTLHOG(Size(12,12),Size(6,6),Size(3,3),Size(3,3),9,1,-1.0,0,0.2,t
 
 MySVM TriangleSVM,RoundRimSVM,RectBlueSVM;
 MySVM TLRecSVM;//识别红色信号灯类别的SVM分类器
-MySVM isTLSVM;//识别识别是否为信号灯的SVM分类器
+MySVM isTLSVM;//暂时无用
+MySVM isVerticalTLSVM;//识别识别是否为竖直信号灯的SVM分类器
+MySVM isHorzTLSVM;//识别识别是否为水平信号灯的SVM分类器
 
 
 //control TSR_flag
@@ -579,16 +582,20 @@ int main()
 		const String TLRecPath="D:\\JY\\JY_TrainingSamples\\TLRec";
 		const int TLTypeNum=3;//包括非TL
 		HOGTrainingTrafficSign(TLRecPath,TLRecHOG,TLTypeNum,TLREC_WIDTH,TLREC_HEIGHT,"src//TLRec.xml");
-		TLRecSVM.load("src//TLRec.xml");
 
-		const String isTLPath="D:\\JY\\JY_TrainingSamples\\isTL";
+
+		//const String isTLPath="D:\\JY\\JY_TrainingSamples\\isTL";
+		const String isTLVerticaPath = "D:\\JY\\JY_TrainingSamples\\isTL_Vertical";
+		const String isTLHorzPath = "D:\\JY\\JY_TrainingSamples\\isTL_Horz";
 		const int isTLNum=2;
-		HOGTrainingTrafficSign(isTLPath,isTLHOG,isTLNum,TLREC_WIDTH,TLREC_HEIGHT,"src//isTL.xml");
-		isTLSVM.load("src//isTL.xml");
-	}else{
-		TLRecSVM.load("src//TLRec.xml");
-		isTLSVM.load("src//isTL.xml");
+		HOGTrainingTrafficSign(isTLVerticaPath, myHOG_vertical, isTLNum, HOG_TLVertical_Width, HOG_TLVertical_Height, "src//isVerticalTL.xml");
+		HOGTrainingTrafficSign(isTLHorzPath, myHOG_horz, isTLNum, HOG_TLHorz_Width, HOG_TLHorz_Height, "src//isHorzTL.xml");
+
 	}
+		TLRecSVM.load("src//TLRec.xml");
+		isVerticalTLSVM.load("src//isVerticalTL.xml");
+		isHorzTLSVM.load("src//isHorzTL.xml");
+
 	
 	//traffic sign training
 	if (isTrain)
@@ -688,7 +695,7 @@ void openMP_MultiThreadVideo()
 	IplImage * frame,*copyFrame;
 	float connectResult[8]={0,0,0,0,0,0,0,0};
 	//cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\goodLight.avi");
-	cap=cvCreateFileCapture("CamraVideo\\Video_20160331095801.avi");
+	cap=cvCreateFileCapture("CamraVideo\\Video_20160331093825.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
 	int curPos=0;//current video frame position

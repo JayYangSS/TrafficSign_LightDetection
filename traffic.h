@@ -37,7 +37,10 @@
 #define HEXA 2
 #define RECTANGLE 3
 
-
+const int HOG_TLVertical_Height = 30;
+const int HOG_TLVertical_Width = 15;
+const int HOG_TLHorz_Height = 15;
+const int HOG_TLHorz_Width = 30;
 //HardExample：负样本个数。如果HardExampleNO大于0，表示处理完初始负样本集后，继续处理HardExample负样本集。
 //不使用HardExample时必须设置为0，因为特征向量矩阵和特征类别矩阵的维数初始化时用到这个值
 

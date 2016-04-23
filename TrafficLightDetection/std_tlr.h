@@ -56,7 +56,7 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 bool BoxDetectTL(Mat src_test,HOGDescriptor &myHOG,bool HORZ);
 bool BlackAroundLight(IplImage* srcImg,CvRect	iRect);
 int RecognizeLight(IplImage* srcImg,CvRect iRect);//return the TL recognition result
-int isTL(IplImage* srcImg,CvRect iRect);//判断是否为信号灯
+int isTL(IplImage* srcImg, CvRect iRect, bool isVertical);//判断是否为信号灯
 void GetImageRect(IplImage* orgImage, CvRect rectInImage, IplImage* imgRect);
 using namespace std;
 using namespace cv;

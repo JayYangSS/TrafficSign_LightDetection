@@ -338,7 +338,7 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	isLighInBox(tmpMat);
 #endif
 
-	int DetectResult=isTL(srcImage,iRect);
+	//int DetectResult=isTL(srcImage,iRect,);
 	//int DetectResult = isTL(srcImage, VerticalRect);
 
 	cvReleaseImage(&VerticalLight);
@@ -347,17 +347,17 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	cvReleaseImage(&HorzGrayLight);
 
 	//DetectResult = 1;
-	if (DetectResult==1)
+
+	//if(VerticalBlackRatio>=RatioThreshold&&VerticalBlackRatio<=93)
+	if (verticalBlackLimit&&isTL(srcImage, VerticalRect, true)){
+		VerticalReturnStatus = true;
+	}		
+	//else if (HorzBlackRatio>=RatioThreshold&&HorzBlackRatio<=90)
+	else if (horizBlackLimit&&isTL(srcImage, HorzRect, false))
 	{
-		//if(VerticalBlackRatio>=RatioThreshold&&VerticalBlackRatio<=93)
-		if (verticalBlackLimit)
-			VerticalReturnStatus = true;
-		//else if (HorzBlackRatio>=RatioThreshold&&HorzBlackRatio<=90)
-		else if (horizBlackLimit)
-		{
-			HorzReturnStatus=true;
-		}
+		HorzReturnStatus=true;
 	}
+
 	 
 
 	//若检测出的矩形框符合条件，则在原始图像上画出矩形标示框

@@ -7,7 +7,9 @@ extern HOGDescriptor TLRecHOG;
 extern HOGDescriptor isTLHOG;
 
 extern MySVM TLRecSVM;//识别红色信号灯类别的SVM分类器
-extern MySVM isTLSVM;//识别是否是信号灯
+//extern MySVM isTLSVM;//识别是否是信号灯
+extern MySVM isVerticalTLSVM;//识别识别是否为竖直信号灯的SVM分类器
+extern MySVM isHorzTLSVM;//识别识别是否为水平信号灯的SVM分类器
 extern bool TRAIN;
 extern bool HORZ;
 
@@ -111,31 +113,41 @@ int RecognizeLight(IplImage* srcImg,CvRect iRect)
 
 
 
-int isTL(IplImage* srcImg,CvRect iRect)
+int isTL(IplImage* srcImg,CvRect iRect,bool isVertical)
 {
 	CvSize cutSize;
 	cutSize.width=iRect.width;
 	cutSize.height=iRect.height;
 	IplImage *tmpCutImg=cvCreateImage(cutSize,srcImg->depth,srcImg->nChannels);
 	GetImageRect(srcImg,iRect,tmpCutImg);
-#if IS_CUTIMG
-	cvShowImage("tmpCutImg",tmpCutImg);
-	cvWaitKey(1);
-#endif
 
 	Mat cutMat(tmpCutImg);
 	Mat tmpIsTL;
 	vector<float> descriptor;
 
 	//识别信号灯类别
-	resize(cutMat,tmpIsTL,Size(TLREC_WIDTH,TLREC_HEIGHT));
-	isTLHOG.compute(tmpIsTL,descriptor,Size(8,8));
+	if (isVertical){
+		resize(cutMat, tmpIsTL, Size(HOG_TLVertical_Width, HOG_TLVertical_Height));
+		myHOG_vertical.compute(tmpIsTL, descriptor, Size(8, 8));
+	}
+	else{
+		resize(cutMat, tmpIsTL, Size(HOG_TLHorz_Width, HOG_TLHorz_Height));
+		myHOG_horz.compute(tmpIsTL, descriptor, Size(8, 8));
+	}
+		
 	int DescriptorDim=descriptor.size();		
 	Mat SVMTLRecMat(1,DescriptorDim,CV_32FC1);
 	for(int i=0; i<DescriptorDim; i++)
 		SVMTLRecMat.at<float>(0,i) = descriptor[i];
 
-	int result=isTLSVM.predict(SVMTLRecMat);
+	//int result=isTLSVM.predict(SVMTLRecMat);
+	int result = 0;
+	if (isVertical)
+		result = isVerticalTLSVM.predict(SVMTLRecMat);
+	else
+	{
+		result = isHorzTLSVM.predict(SVMTLRecMat);
+	}
 	cvReleaseImage(&tmpCutImg);
 	return result;
 }

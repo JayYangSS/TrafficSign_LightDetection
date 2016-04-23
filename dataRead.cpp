@@ -76,7 +76,7 @@ int HOGTrainingTrafficSign(const String path,HOGDescriptor &hog,int num_folder,i
 				sampleFeatureMat.at<float>(count_img,i) = descriptors[i];//第count_img个样本的特征向量中的第i个元素
 			sampleLabelMat.at<float>(count_img,0) =j;//第j个文件夹的样本的标签设置为j
 			count_img++;
-		}		
+		}
 	}
 	cout<<"sample number:"<<count_img<<endl;
 
