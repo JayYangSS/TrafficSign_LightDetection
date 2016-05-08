@@ -43,7 +43,7 @@ const int HOG_TLHorz_Height = 15;
 const int HOG_TLHorz_Width = 30;
 //HardExample：负样本个数。如果HardExampleNO大于0，表示处理完初始负样本集后，继续处理HardExample负样本集。
 //不使用HardExample时必须设置为0，因为特征向量矩阵和特征类别矩阵的维数初始化时用到这个值
-
+int const containerLen=8;//滤波容器长度
 
 using namespace std;
 using namespace cv;
@@ -64,11 +64,50 @@ public:
 	}
 
 };
-class ShapeRecResult{
-public:
+
+struct ShapeRecResult{
+//public:
 	Rect box;
 	int color;
 	int shape;
+};
+
+class RectTracker{
+public:
+	ShapeRecResult trackedBox;
+	bool isDraw;//检测框是否可以显示在当前帧上
+	deque<int> signs;
+
+	//计算该跟踪目标是否可以被删除(返回true表示可以被删除)
+	bool isCanDelete(){
+		int len = signs.size();
+		int zeroNum = 0;
+		if (len < containerLen)return false;
+
+		for (int i = 0; i < len; i++){
+			if (signs[i] == 0)zeroNum++;
+		}
+
+		if (zeroNum>5)return true;
+		else
+			return false;
+	}
+
+
+	//计算该跟踪目标检测框是否可以在图像上显示
+	bool calcDraw(){
+		int len = signs.size();
+		int occurenceNum = 0;
+		if (len < containerLen)return false;
+		for (int i = 0; i < len; i++){
+			if (signs[i] == 1)occurenceNum++;
+		}
+			
+		if (occurenceNum >= 4)
+			return true;
+		else
+			return false;
+	}
 };
 
 

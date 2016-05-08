@@ -10,8 +10,8 @@ bool checkOtherBlocksBlackRatio(IplImage* TLImg, int iColor, bool isVertical){
 	int widthStep = TLImg->widthStep;
 	int totalNum = height*width;
 	
-	cvShowImage("TLImg", TLImg);
-	cvWaitKey(5);
+	//cvShowImage("TLImg", TLImg);
+	//cvWaitKey(5);
 	//vertical
 	if (isVertical){
 		//process the green light
@@ -183,7 +183,7 @@ bool isLighInBox(Mat src)
 }
 
 
-void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2)//p1为前行位，p2为左转位
+void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,vector<ShapeRecResult> &v)//p1为前行位，p2为左转位
 {
 	const int iWidth = inputImage->width;
 	const int iHeight = inputImage->height;
@@ -359,76 +359,55 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	}
 
 	 
-
+	ShapeRecResult TLbox;
 	//若检测出的矩形框符合条件，则在原始图像上画出矩形标示框
 	if(VerticalReturnStatus==true)
 	{
+		
+		TLbox.box.x = iDrawRectX1;
+		TLbox.box.y = iDrawRectY1;
+		TLbox.box.width = iDrawRectWidth;
+		TLbox.box.height = iDrawRectHeight;
+		TLbox.shape = 1;//表示竖向
+
 		if(iColor==GREEN_PIXEL_LABEL)
 		{
-			cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,255,0),2);
-			//*p2=*p2+1;
+			//cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,255,0),2);
+			TLbox.color = GREEN_PIXEL_LABEL;
+			v.push_back(TLbox);
 		}
 
 		else if(iColor==RED_PIXEL_LABEL)
 		{
-			cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,0,255),2);
-			//*p1=*p1+1;
-
-
-			//TODO:识别信号灯指向
-			int result=RecognizeLight(srcImage,iRect);
-			switch(result)
-			{
-			case 0://圆形
-				//cout<<"圆形"<<endl;
-				*p1=1;
-				break;
-			case 1://禁止左转
-				//cout<<"禁止左转"<<endl;
-				*p2=1;
-				break;
-			case 2://前行箭头
-				//cout<<"禁止右转"<<endl;
-				*p1=1;
-				break;
-			default:
-				break;
-			}
+			//cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,0,255),2);
+			TLbox.color = RED_PIXEL_LABEL;
+			v.push_back(TLbox);
 		}
-	}else if (HorzReturnStatus)
+	}
+	else if (HorzReturnStatus)
 	{
 		//横向检测
+		TLbox.box.x = HorzRectX1;
+		TLbox.box.y = HorzRectY1;
+		TLbox.box.width = HorzRectWidth;
+		TLbox.box.height = HorzRectHeight;
+		TLbox.shape = 0;//表示横向
+
+
+
 		if(iColor==GREEN_PIXEL_LABEL)
 		{
-			cvRectangle(srcImage,cvPoint(HorzRectX1,HorzRectY1),cvPoint(HorzRectX2,HorzRectY2),cvScalar(0,255,0),2);
-			//*p2=*p2+1;
+			//cvRectangle(srcImage,cvPoint(HorzRectX1,HorzRectY1),cvPoint(HorzRectX2,HorzRectY2),cvScalar(0,255,0),2);
+			TLbox.color = GREEN_PIXEL_LABEL;
+			v.push_back(TLbox);
 		}
 
 		else if(iColor==RED_PIXEL_LABEL)
 		{
-			cvRectangle(srcImage,cvPoint(HorzRectX1,HorzRectY1),cvPoint(HorzRectX2,HorzRectY2),cvScalar(0,0,255),2);
+			//cvRectangle(srcImage,cvPoint(HorzRectX1,HorzRectY1),cvPoint(HorzRectX2,HorzRectY2),cvScalar(0,0,255),2);
 			//*p1=*p1+1;
-
-
-			//TODO:识别信号灯指向
-			int result=RecognizeLight(srcImage,iRect);
-			switch(result)
-			{
-			case 0://圆形
-				//cout<<"圆形"<<endl;
-				*p1=1;
-				break;
-			case 1://禁止左转
-				//cout<<"禁止左转"<<endl;
-				*p2=1;
-				break;
-			case 2://前行箭头
-				//cout<<"禁止右转"<<endl;
-				*p1=1;
-				break;
-			default:
-				break;
-			}
+			TLbox.color = RED_PIXEL_LABEL;
+			v.push_back(TLbox);
 		}
 	}
 	return;

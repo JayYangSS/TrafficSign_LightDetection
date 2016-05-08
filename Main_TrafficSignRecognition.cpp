@@ -52,6 +52,8 @@ deque<float> signFilters[5];
 deque<float> TLFilters[3];
 int TLCount[3]={0,0,0};//用来进行结果的稳定
 int TLCountThreshold=10;//如果丢失10帧以上，则认为没有检测到了
+vector<RectTracker> trackedObj;//当前被跟踪的目标
+
 
 //test function
 void testCamera(PCA &pca,PCA &pca_RoundRim,PCA &pca_RectBlue,CvANN_MLP &nnetwork,
@@ -225,15 +227,15 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 	
 
 	imageSeg = colorSegmentationTL(resize_TLR);
-	cvShowImage("imageSeg", imageSeg);
-	cvWaitKey(5);
+	/*cvShowImage("imageSeg", imageSeg);
+	cvWaitKey(5);*/
 
 	IplImage *closeImg=cvCreateImage(Size(imageSeg->width,imageSeg->height),imageSeg->depth,imageSeg->nChannels);
 	IplConvKernel *t=cvCreateStructuringElementEx(7,7,3,3,CV_SHAPE_ELLIPSE);
 	cvMorphologyEx(imageSeg,closeImg,NULL,t,CV_MOP_CLOSE);
 	//cvMorphologyEx(imageSeg, closeImg, NULL, t, CV_MOP_OPEN);
-	cvShowImage("closeImg",closeImg);
-	cvWaitKey(5);
+	/*cvShowImage("closeImg",closeImg);
+	cvWaitKey(5);*/
 
 #if ISDEBUG_TL
 	//imageNoiseRem=noiseRemoval(imageSeg);
@@ -691,11 +693,11 @@ void findColorRange()
 
 void openMP_MultiThreadVideo()
 {
-	bool saveFlag=true;
-	IplImage * frame,*copyFrame;
+	bool saveFlag=false;
+	IplImage * frame,*copyFrame; 
 	float connectResult[8]={0,0,0,0,0,0,0,0};
-	//cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\goodLight.avi");
-	cap=cvCreateFileCapture("CamraVideo\\Video_20160331093825.avi");
+	cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\TL_HORZ.avi");
+	//cap=cvCreateFileCapture("CamraVideo\\goodLight.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
 	int curPos=0;//current video frame position
@@ -758,9 +760,9 @@ void openMP_MultiThreadVideo()
 		cvShowImage("TL",resize_TLR);
 		cvWaitKey(5);
 		//show the detection  result of TSR
-		//namedWindow("TSR");
-		//imshow("TSR",re_src);
-		//waitKey(5);
+		/*namedWindow("TSR");
+		imshow("TSR",re_src);
+		waitKey(5);*/
 #endif
 		if (saveFlag)
 		{

@@ -24,7 +24,7 @@
 #define GREEN_PIXEL_LABEL 255
 #define RED_PIXEL_LABEL 128
 #define NON_BLOB_PIXEL_LABEL 0
-#define ROIHeight 600
+#define ROIHeight 400
 #define ROIWidth 0
 #define PosSamNO    523 //正样本个数
 #define HORZ_PosSamNO    36 //正样本个数
@@ -52,7 +52,7 @@ IplImage* noiseRemoval2(IplImage* inputImage);
 IplImage* fixImage(IplImage* colorseg,IplImage* tophat);
 bool sizeFiltering(CvRect rect);
 bool regionGrowFiltering(IplImage* inputImage,IplImage*colorSeg,CvRect iRect,CvRect& oRect,vector<Rect> &found_filtered);
-void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,int* p1,int* p2);
+void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int iColor,vector<ShapeRecResult> &v);
 bool BoxDetectTL(Mat src_test,HOGDescriptor &myHOG,bool HORZ);
 bool BlackAroundLight(IplImage* srcImg,CvRect	iRect);
 int RecognizeLight(IplImage* srcImg,CvRect iRect);//return the TL recognition result

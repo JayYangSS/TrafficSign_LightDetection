@@ -37,12 +37,13 @@ IplImage* colorSegmentationTL(IplImage* inputImage)
 				colorR = in[3*i+2];
 				rgb2hsi(colorR,colorG,colorB,colorH,colorS,colorI);
 
-				if (colorG >= 80 && (colorH >= 160 && colorH <= 200) && (colorS >= 30) && colorI >= 70)//2
-				//if( colorR<=220 && (colorH>=140 && colorH<=195) && (colorS>=15) && colorI>=100 )//1
+				if (colorG >= 80 && (colorH >= 160 && colorH <= 200) && (colorS >= 30) && colorI >= 70)//Cloudy
+				//if (colorR <= 220 && (colorH >= 140 && colorH <= 195) && (colorS >= 15 && colorS <= 70) && colorI >= 110)//Sunny
 				//if( colorG>=70 && (colorH>=150 && colorH<=200) && (colorS>=13 && colorS<=100) && (colorI<=240&&colorI>=170) )
 					out[i]=GREEN_PIXEL_LABEL;
 				//else if( colorR>=200 && (colorH<=30 || colorH>=325) && colorS>=25 && colorI>=110)//1
-				else if( colorR>=100&& (colorH<=30 || colorH>=240) && (colorS>=20&&colorS<130) && (colorI>=40&&colorI<170))
+				//else if( colorR>=100&& (colorH<=32 || colorH>=240) && (colorS>=20&&colorS<130) && (colorI>=40&&colorI<170))//Cloudy
+				else if (colorB <= 128 && (colorH <= 75 || colorH >= 348) && colorS >= 30 && colorI >= 85)//Sunny
 				//else if (colorR >= 200 && (colorH <= 30 || colorH >= 240) && (colorS >= 40 && colorS<80) && (colorI >= 120 && colorI<200))
 					out[i]=RED_PIXEL_LABEL;
 				else

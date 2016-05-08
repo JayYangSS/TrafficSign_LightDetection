@@ -1,5 +1,5 @@
 #include "std_tlr.h"
-#define IS_CUTIMG 1
+#define IS_CUTIMG 0
 
 extern HOGDescriptor myHOG_vertical;
 extern HOGDescriptor myHOG_horz;
