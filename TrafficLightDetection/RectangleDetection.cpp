@@ -28,6 +28,7 @@ bool checkOtherBlocksBlackRatio(IplImage* TLImg, int iColor, bool isVertical){
 				}
 			}
 			float blackRatio1 = (float)(greenBlackNum1 * 3) / (float)totalNum;
+			if (blackRatio1 <= 0.5)return false;
 
 			//calculate the second block
 			for (; j < height *2/ 3; j++){
@@ -38,7 +39,7 @@ bool checkOtherBlocksBlackRatio(IplImage* TLImg, int iColor, bool isVertical){
 			}
 			float blackRatio2 = (float)(greenBlackNum2 * 3) / (float)totalNum;
 
-			if (blackRatio1>0.7&&blackRatio2>0.7)return true;
+			if (blackRatio2>0.5)return true;
 			else
 				return false;
 		}
@@ -56,6 +57,7 @@ bool checkOtherBlocksBlackRatio(IplImage* TLImg, int iColor, bool isVertical){
 				}
 			}
 			float blackRatio1 = (float)(redBlackNum1 * 3) / (float)totalNum;
+			if (blackRatio1 <= 0.5)return false;
 
 			//calculate the second block
 			for (; j < height ; j++){
@@ -66,7 +68,7 @@ bool checkOtherBlocksBlackRatio(IplImage* TLImg, int iColor, bool isVertical){
 			}
 			float blackRatio2 = (float)(redBlackNum2 * 3) / (float)totalNum;
 
-			if (blackRatio1>0.5&&blackRatio2>0.5)return true;
+			if (blackRatio2>0.5)return true;
 			else
 				return false;
 		}
@@ -86,7 +88,7 @@ bool checkOtherBlocksBlackRatio(IplImage* TLImg, int iColor, bool isVertical){
 				}
 			}
 			float blackRatio1 = (float)(greenBlackNum1 * 3) / (float)totalNum;
-
+			if (blackRatio1 <= 0.6)return false;
 			//calculate the second block
 			for (int j = 0; j < height ; j++){
 				uchar* in = (uchar*)TLImg->imageData + j* widthStep;
@@ -96,7 +98,7 @@ bool checkOtherBlocksBlackRatio(IplImage* TLImg, int iColor, bool isVertical){
 			}
 			float blackRatio2 = (float)(greenBlackNum2 * 3) / (float)totalNum;
 
-			if (blackRatio1>0.8&&blackRatio2>0.9)return true;
+			if (blackRatio2>0.7)return true;
 			else
 				return false;
 		}
@@ -113,7 +115,7 @@ bool checkOtherBlocksBlackRatio(IplImage* TLImg, int iColor, bool isVertical){
 				}
 			}
 			float blackRatio1 = (float)(redBlackNum1 * 3) / (float)totalNum;
-
+			if (blackRatio1 <= 0.5)return false;
 			//calculate the second block
 			for (int j=0; j < height; j++){
 				uchar* in = (uchar*)TLImg->imageData + j* widthStep;
@@ -123,7 +125,7 @@ bool checkOtherBlocksBlackRatio(IplImage* TLImg, int iColor, bool isVertical){
 			}
 			float blackRatio2 = (float)(redBlackNum2 * 3) / (float)totalNum;
 
-			if (blackRatio1>0.5&&blackRatio2>0.5)return true;
+			if (blackRatio2>0.5)return true;
 			else
 				return false;
 		}
@@ -189,8 +191,8 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	const int iHeight = inputImage->height;
 	
 	//水平和竖直状态
-	bool VerticalReturnStatus = false;
-	bool HorzReturnStatus=false;
+	//bool VerticalReturnStatus = false;
+	//bool HorzReturnStatus=false;
 
 	//横向检测框
 	int HorzRectHeight=(iRect.width+iRect.height)/2 + 6;
@@ -257,11 +259,137 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 	IplImage *VerticalGrayLight=cvCreateImage(cvSize(iDrawRectWidth,iDrawRectHeight),IPL_DEPTH_8U,1);
 	cvCvtColor(VerticalLight,VerticalGrayLight,CV_BGR2GRAY);
 	cvThreshold(VerticalGrayLight,VerticalGrayLight,0,255,CV_THRESH_OTSU);
-
+	
 	//get the other two  blocks black ration (vertical)
-
 	bool verticalBlackLimit = checkOtherBlocksBlackRatio(VerticalGrayLight, iColor,true);
 
+	ShapeRecResult TLbox;
+	//若检测出的矩形框符合条件，则将坚持到的矩形框放入v中，在外面统一显示
+	//if(VerticalBlackRatio>=RatioThreshold&&VerticalBlackRatio<=93)
+	//if (verticalBlackLimit&&isTL(srcImage, VerticalRect, true)){
+	if (verticalBlackLimit == true && isTL(srcImage, VerticalRect, true))
+	{
+		TLbox.box = VerticalRect;
+		//TLbox.shape = 1;//表示竖向
+
+		if (iColor == GREEN_PIXEL_LABEL)
+		{
+			//cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,255,0),2);
+			TLbox.color = GREEN_PIXEL_LABEL;
+			v.push_back(TLbox);
+		}
+
+		else if (iColor == RED_PIXEL_LABEL)
+		{
+			//cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,0,255),2);
+			TLbox.color = RED_PIXEL_LABEL;
+
+			//识别信号灯指向
+			int result = RecognizeLight(srcImage, iRect);
+			switch (result)
+			{
+			case 0://圆形
+				TLbox.shape = 0;
+				break;
+			case 1://禁止左转
+				TLbox.shape = 1;
+				break;
+			case 2://前行箭头
+				TLbox.shape = 0;
+				break;
+			default:
+				break;
+			}
+			v.push_back(TLbox);
+		}
+	}
+	else{
+		//水平方向统计黑色像素比例
+		CvRect HorzRect;
+		HorzRect.x = HorzRectX1;
+		HorzRect.y = HorzRectY1;
+		HorzRect.width = HorzRectWidth;
+		HorzRect.height = HorzRectHeight;
+		IplImage*HorzLight = cvCreateImage(cvSize(HorzRectWidth, HorzRectHeight), srcImage->depth, srcImage->nChannels);
+		GetImageRect(srcImage, HorzRect, HorzLight);
+		IplImage *HorzGrayLight = cvCreateImage(cvSize(HorzRectWidth, HorzRectHeight), IPL_DEPTH_8U, 1);
+		cvCvtColor(HorzLight, HorzGrayLight, CV_BGR2GRAY);
+		cvThreshold(HorzGrayLight, HorzGrayLight, 0, 255, CV_THRESH_OTSU);
+
+
+		/*
+		int HorzWidthStep = HorzGrayLight->widthStep;
+		int HorzSum=0;
+		int HorzGrayValue=0;
+		unsigned char* pDataHorz;
+		for(int j=0; j<HorzRectHeight; j++){
+		pDataHorz = (unsigned char*)HorzGrayLight->imageData + j*HorzWidthStep;
+		for(int i=0; i<HorzRectWidth; i++){
+		HorzGrayValue = pDataHorz[i];
+		//if((HorzGrayValue<=grayThresholding))
+		if((HorzGrayValue==0))
+		HorzSum++;
+		}
+		}	*/
+		/*int cvHorzSum=cvCountNonZero(HorzGrayLight);
+		int horzBlackNum=HorzRectWidth*HorzRectHeight-cvHorzSum;*/
+
+		//get the other two  blocks black ration (horizental)
+		bool horizBlackLimit = checkOtherBlocksBlackRatio(HorzGrayLight, iColor, false);
+		//bool horizBlackLimit = true;
+
+		//else if (HorzBlackRatio>=RatioThreshold&&HorzBlackRatio<=90)
+		//else if (horizBlackLimit&&isTL(srcImage, HorzRect, false))
+		if (horizBlackLimit&&isTL(srcImage, HorzRect, false))
+		{
+			//横向检测
+			TLbox.box.x = HorzRectX1;
+			TLbox.box.y = HorzRectY1;
+			TLbox.box.width = HorzRectWidth;
+			TLbox.box.height = HorzRectHeight;
+			//TLbox.shape = 0;//表示横向
+
+
+
+			if (iColor == GREEN_PIXEL_LABEL)
+			{
+				//cvRectangle(srcImage,cvPoint(HorzRectX1,HorzRectY1),cvPoint(HorzRectX2,HorzRectY2),cvScalar(0,255,0),2);
+				TLbox.color = GREEN_PIXEL_LABEL;
+				v.push_back(TLbox);
+			}
+
+			else if (iColor == RED_PIXEL_LABEL)
+			{
+				//cvRectangle(srcImage,cvPoint(HorzRectX1,HorzRectY1),cvPoint(HorzRectX2,HorzRectY2),cvScalar(0,0,255),2);
+				//*p1=*p1+1;
+				TLbox.color = RED_PIXEL_LABEL;
+				int result = RecognizeLight(srcImage, iRect);
+				switch (result)
+				{
+				case 0://圆形
+					TLbox.shape = 0;
+					break;
+				case 1://禁止左转
+					TLbox.shape = 1;
+					break;
+				case 2://前行箭头
+					TLbox.shape = 0;
+					break;
+				default:
+					break;
+				}
+				v.push_back(TLbox);
+			}
+		}
+		cvReleaseImage(&HorzLight);
+		cvReleaseImage(&HorzGrayLight);
+	}
+
+
+
+
+
+	
 
 	/*
 	int iWidthStep = VerticalGrayLight->widthStep; 
@@ -283,38 +411,7 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 
 
 
-	//水平方向统计黑色像素比例
-	CvRect HorzRect;
-	HorzRect.x=HorzRectX1;
-	HorzRect.y=HorzRectY1;
-	HorzRect.width=HorzRectWidth;
-	HorzRect.height=HorzRectHeight;
-	IplImage*HorzLight = cvCreateImage(cvSize(HorzRectWidth,HorzRectHeight),srcImage->depth,srcImage->nChannels);
-	GetImageRect(srcImage,HorzRect,HorzLight);
-	IplImage *HorzGrayLight=cvCreateImage(cvSize(HorzRectWidth,HorzRectHeight),IPL_DEPTH_8U,1);
-	cvCvtColor(HorzLight,HorzGrayLight,CV_BGR2GRAY);
-	cvThreshold(HorzGrayLight,HorzGrayLight,0,255,CV_THRESH_OTSU);
 	
-	
-/*	
-	int HorzWidthStep = HorzGrayLight->widthStep; 
-	int HorzSum=0;
-	int HorzGrayValue=0;
-	unsigned char* pDataHorz;
-	for(int j=0; j<HorzRectHeight; j++){
-		pDataHorz = (unsigned char*)HorzGrayLight->imageData + j*HorzWidthStep;
-		for(int i=0; i<HorzRectWidth; i++){
-			HorzGrayValue = pDataHorz[i];
-			//if((HorzGrayValue<=grayThresholding))
-			if((HorzGrayValue==0))
-				HorzSum++;
-		}
-	}	*/
-	/*int cvHorzSum=cvCountNonZero(HorzGrayLight);
-	int horzBlackNum=HorzRectWidth*HorzRectHeight-cvHorzSum;*/
-	
-	//get the other two  blocks black ration (horizental)
-	bool horizBlackLimit = checkOtherBlocksBlackRatio(HorzGrayLight, iColor, false);
 
 	//int VerticalBlackRatio = (float)verticalBlackNum*100/(float)((iDrawRectWidth+1)*((float)iDrawRectHeight+1));//矩形框中黑色像素所占比例
 	//int HorzBlackRatio=(float)horzBlackNum*100/(float)((HorzRectWidth+1)*((float)HorzRectHeight+1));//矩形框中黑色像素所占比例
@@ -343,72 +440,9 @@ void rectangleDetection(IplImage* inputImage,IplImage* srcImage,CvRect iRect,int
 
 	cvReleaseImage(&VerticalLight);
 	cvReleaseImage(&VerticalGrayLight);
-	cvReleaseImage(&HorzLight);
-	cvReleaseImage(&HorzGrayLight);
+	
 
 	//DetectResult = 1;
 
-	//if(VerticalBlackRatio>=RatioThreshold&&VerticalBlackRatio<=93)
-	if (verticalBlackLimit&&isTL(srcImage, VerticalRect, true)){
-		VerticalReturnStatus = true;
-	}		
-	//else if (HorzBlackRatio>=RatioThreshold&&HorzBlackRatio<=90)
-	else if (horizBlackLimit&&isTL(srcImage, HorzRect, false))
-	{
-		HorzReturnStatus=true;
-	}
-
-	 
-	ShapeRecResult TLbox;
-	//若检测出的矩形框符合条件，则在原始图像上画出矩形标示框
-	if(VerticalReturnStatus==true)
-	{
-		
-		TLbox.box.x = iDrawRectX1;
-		TLbox.box.y = iDrawRectY1;
-		TLbox.box.width = iDrawRectWidth;
-		TLbox.box.height = iDrawRectHeight;
-		TLbox.shape = 1;//表示竖向
-
-		if(iColor==GREEN_PIXEL_LABEL)
-		{
-			//cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,255,0),2);
-			TLbox.color = GREEN_PIXEL_LABEL;
-			v.push_back(TLbox);
-		}
-
-		else if(iColor==RED_PIXEL_LABEL)
-		{
-			//cvRectangle(srcImage,cvPoint(iDrawRectX1,iDrawRectY1),cvPoint(iDrawRectX2,iDrawRectY2),cvScalar(0,0,255),2);
-			TLbox.color = RED_PIXEL_LABEL;
-			v.push_back(TLbox);
-		}
-	}
-	else if (HorzReturnStatus)
-	{
-		//横向检测
-		TLbox.box.x = HorzRectX1;
-		TLbox.box.y = HorzRectY1;
-		TLbox.box.width = HorzRectWidth;
-		TLbox.box.height = HorzRectHeight;
-		TLbox.shape = 0;//表示横向
-
-
-
-		if(iColor==GREEN_PIXEL_LABEL)
-		{
-			//cvRectangle(srcImage,cvPoint(HorzRectX1,HorzRectY1),cvPoint(HorzRectX2,HorzRectY2),cvScalar(0,255,0),2);
-			TLbox.color = GREEN_PIXEL_LABEL;
-			v.push_back(TLbox);
-		}
-
-		else if(iColor==RED_PIXEL_LABEL)
-		{
-			//cvRectangle(srcImage,cvPoint(HorzRectX1,HorzRectY1),cvPoint(HorzRectX2,HorzRectY2),cvScalar(0,0,255),2);
-			//*p1=*p1+1;
-			TLbox.color = RED_PIXEL_LABEL;
-			v.push_back(TLbox);
-		}
-	}
 	return;
 }

@@ -64,7 +64,7 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 {	
 
 	vector<ShapeRecResult> currentFrameRect;
-	int p1=0;int p2=0;//p1表示前行位，p2表示左转位,p3表示右转位
+	//int p1=0;int p2=0;//p1表示前行位，p2表示左转位,p3表示右转位
 	const int ministArea=20;
 	vector<vector<Point>>contours;
 	Rect contourRect;
@@ -72,9 +72,11 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 	
 
 	Mat edge;
-	Canny(inputImg,edge,0,50,5);
+	Canny(inputImg,edge,20,50,5);
 	findContours(edge,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_SIMPLE);
-	
+	/*imshow("edge", edge);
+	waitKey(1);*/
+
 	for (int i=0;i<contours.size();i++)
 	{
 		vector<Point> contour=contours[i];
@@ -99,9 +101,8 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 		int iColor=RecColor(tempMat);
 		rectangleDetection(inputImage, srcImage, iRect, iColor, currentFrameRect);
 	}
-	
-
-	if (trackedObj.empty()){
+	//currentFrameRect中的shape：0表示圆形/禁止前行，1表示禁止左转
+		if (trackedObj.empty()){
 		for (int j = 0; j < currentFrameRect.size(); j++){
 			RectTracker rectTracker;
 			rectTracker.isDraw = false;
@@ -111,12 +112,22 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 		}
 	}
 
+	int currentFrameRectNum = currentFrameRect.size();
+	int trackedObjNum = trackedObj.size();
+	//如果当前没有检测框，所有跟踪目标的滤波容器中push进0
+	if (currentFrameRectNum == 0){
+		for (int i = 0; i < trackedObjNum; i++){
+			trackedObj[i].signs.push_back(0);
+			if (trackedObj[i].signs.size()>containerLen)
+				trackedObj[i].signs.pop_front();
+		}
+	}
 
 
 	
-	for (int i = 0; i < trackedObj.size();i++){
+	for (int i = 0; i < trackedObj.size(); i++){
 		bool isMatched = false;
-		for (int j = 0; j < currentFrameRect.size(); j++){
+		for (int j = 0; j < currentFrameRectNum; j++){
 			//跳过currentFrameRect中已经匹配到跟踪目标的元素
 			if (currentFrameRect[j].color == nonMatched_green || currentFrameRect[j].color == nonMatched_red)
 				continue;
@@ -140,12 +151,15 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 			//如果超过容器长度，弹出最先进入的标志
 			if (trackedObj[i].signs.size()>containerLen)trackedObj[i].signs.pop_front();
 		}
+
+		//超过一定数量未再出现目标，将跟踪目标从trackedObj中删除
+		if (trackedObj[i].isCanDelete()){
+			trackedObj.erase(trackedObj.begin() + i);
+		}
 	}
 
 	//遍历currentFrameRect，将其中没有匹配到的矩形框放到trackedObj的最后
 	for (int j = 0; j < currentFrameRect.size(); j++){
-
-
 		if (currentFrameRect[j].color == nonMatched_green || currentFrameRect[j].color == nonMatched_red)
 			continue;
 		RectTracker rectTracker;
@@ -165,6 +179,20 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 			int color = trackedObj[i].trackedBox.color;
 			CvScalar drawColor = (color == GREEN_PIXEL_LABEL) ? cvScalar(0, 255, 0) : cvScalar(0, 0, 255);
 			cvRectangle(srcImage, cvPoint(drawRect.x, drawRect.y), cvPoint(drawRect.x + drawRect.width, drawRect.y + drawRect.height), drawColor, 2);
+			switch (trackedObj[i].trackedBox.shape)
+			{
+			case 0:
+				TLDSend[0] = 1;
+				break;
+			case 1:
+				TLDSend[1] = 1;
+				break;
+			case 2:
+				TLDSend[2] = 1;
+				break;
+			default:
+				break;
+			}
 		}
 			
 	}

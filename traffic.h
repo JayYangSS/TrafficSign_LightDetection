@@ -43,8 +43,9 @@ const int HOG_TLHorz_Height = 15;
 const int HOG_TLHorz_Width = 30;
 //HardExample：负样本个数。如果HardExampleNO大于0，表示处理完初始负样本集后，继续处理HardExample负样本集。
 //不使用HardExample时必须设置为0，因为特征向量矩阵和特征类别矩阵的维数初始化时用到这个值
-int const containerLen=8;//滤波容器长度
-
+int const containerLen=12;//length of the time sequence filter
+int const deleteThresholdNum = 9;//when the number of undetected TL is larger than deleteThresholdNum, delete the corresponding tracked object
+int const occurenceThresholdNum = 4;//when the number of detected TL is larger than occurenceThresholdNum, draw the corresponding detection window on the image
 using namespace std;
 using namespace cv;
 
@@ -88,7 +89,7 @@ public:
 			if (signs[i] == 0)zeroNum++;
 		}
 
-		if (zeroNum>5)return true;
+		if (zeroNum>deleteThresholdNum)return true;
 		else
 			return false;
 	}
@@ -103,7 +104,7 @@ public:
 			if (signs[i] == 1)occurenceNum++;
 		}
 			
-		if (occurenceNum >= 4)
+		if (occurenceNum >= occurenceThresholdNum)
 			return true;
 		else
 			return false;
