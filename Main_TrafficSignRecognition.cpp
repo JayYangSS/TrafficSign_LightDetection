@@ -812,6 +812,8 @@ void openMP_MultiThreadVideo()
 			data.push_back(timeStamp);
 			for (int i = 1; i <= 8; i++)
 				data.push_back(connectResult[i - 1]);
+			packData(data);
+			data.clear();//若不清除，则数据不断累积，会造成接收端缓冲区溢出
 			gb_filled = true;
 		}
 
@@ -924,6 +926,8 @@ void openMP_MultiThreadCamera()
 			data.push_back(timeStamp);
 			for (int i = 1; i <= 8; i++)
 				data.push_back(connectResult[i - 1]);
+			packData(data);
+			data.clear();//若不清除，则数据不断累积，会造成接收端缓冲区溢出
 			gb_filled = true;
 		}
 
