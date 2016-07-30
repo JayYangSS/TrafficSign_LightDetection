@@ -10,6 +10,7 @@ Drogonfly_ImgRead::Drogonfly_ImgRead(void)
 Drogonfly_ImgRead::~Drogonfly_ImgRead(void)
 {
 	cvReleaseImage(&cvImg);
+	ClearBuffer();
 }
 
 
