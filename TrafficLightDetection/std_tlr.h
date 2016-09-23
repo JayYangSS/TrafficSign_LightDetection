@@ -2,6 +2,7 @@
 #define STD_TLR_H
 
 #include "traffic.h"
+#include "clcnst\clcnst.h"
 
 #pragma comment(lib,"ws2_32.lib")
 #pragma warning(disable:4819)
@@ -24,7 +25,7 @@
 #define GREEN_PIXEL_LABEL 255
 #define RED_PIXEL_LABEL 128
 #define NON_BLOB_PIXEL_LABEL 0
-#define ROIHeight 400
+#define ROIHeight 480
 #define ROIWidth 0
 #define PosSamNO    523 //正样本个数
 #define HORZ_PosSamNO    36 //正样本个数

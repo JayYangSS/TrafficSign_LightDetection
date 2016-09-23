@@ -15,7 +15,7 @@
 #define GREEN_PIXEL_LABEL 255
 #define RED_PIXEL_LABEL 128
 #define NON_BLOB_PIXEL_LABEL 0
-#define ROIHeight 480
+//#define ROIHeight 960
 #define ROIWidth 0
 #define PI 3.1415
 #define RESULT_G 0
@@ -128,7 +128,7 @@ public:
 	}
 };
 
-IplImage* colorSegmentation(IplImage* inputImage);
+//IplImage* colorSegmentation(IplImage* inputImage);
 void showHist(Mat src);
 void hogSVMTrain( HOGDescriptor &myHOG,bool TRAIN);
 void BoxDetect(Mat src_test,HOGDescriptor &myHOG,vector<Rect> &found_filtered);

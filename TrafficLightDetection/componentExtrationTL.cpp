@@ -65,7 +65,7 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 
 	vector<ShapeRecResult> currentFrameRect;
 	//int p1=0;int p2=0;//p1表示前行位，p2表示左转位,p3表示右转位
-	const int ministArea=20;
+	const int ministArea=15;
 	vector<vector<Point>>contours;
 	Rect contourRect;
 	Mat inputImg(inputImage);
@@ -75,7 +75,7 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 	Canny(inputImg,edge,20,50,5);
 	findContours(edge,contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_SIMPLE);
 	/*imshow("edge", edge);
-	waitKey(1);*/
+	/waitKey(1);*/
 
 	for (int i=0;i<contours.size();i++)
 	{

@@ -39,7 +39,7 @@ bool HORZ=false;//TL
 bool TLRecTrain = false;//是否训练信号灯识别分类器
 //bool saveFlag=true;
 Mat re_src;//for traffic signs detection 
-IplImage *resize_TLR=cvCreateImage(Size(800,600),IPL_DEPTH_8U,3);
+IplImage *resize_TLR=cvCreateImage(Size(1000,750),IPL_DEPTH_8U,3);
 int g_slider_position=0;// slider position
 CvCapture * cap=NULL;
 
@@ -181,6 +181,28 @@ void onTrackbarSlide(int pos)
 	cvSetCaptureProperty(cap, CV_CAP_PROP_POS_FRAMES,pos);  
 }  
 
+Mat HomomorphicFilter(cv::Mat img, float lower = 0.5, float upper = 3.0f, float threshold = 1.5f){
+	int width = img.cols;
+	int height = img.rows;
+	int channel = img.channels();
+	img.convertTo(img, CV_32FC3, 1.0 / 255.0);
+	Mat result;
+
+
+	// Perform DFT, high emphasis filter and IDFT
+	vector<cv::Mat> chs, spc(channel, cv::Mat(height, width, CV_32FC1));
+	cv::split(img, chs);
+
+	for (int c = 0; c<channel; c++) {
+		cv::dct(chs[c], spc[c]);
+		clcnst::hef(spc[c], spc[c], lower, upper, threshold);
+		cv::idct(spc[c], chs[c]);
+	}
+	cv::Mat out;
+	cv::merge(chs, out);
+	out.convertTo(result, CV_8UC3, 255.0);
+	return result;
+}
 
 void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 {
@@ -227,15 +249,16 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 	
 
 	imageSeg = colorSegmentationTL(resize_TLR);
-	/*cvShowImage("imageSeg", imageSeg);
-	cvWaitKey(5);*/
+	//cvShowImage("imageSeg", imageSeg);
+	//cvWaitKey(5);
 
 	IplImage *closeImg=cvCreateImage(Size(imageSeg->width,imageSeg->height),imageSeg->depth,imageSeg->nChannels);
 	IplConvKernel *t=cvCreateStructuringElementEx(7,7,3,3,CV_SHAPE_ELLIPSE);
-	cvMorphologyEx(imageSeg,closeImg,NULL,t,CV_MOP_CLOSE);
-	//cvMorphologyEx(imageSeg, closeImg, NULL, t, CV_MOP_OPEN);
+	//cvMorphologyEx(imageSeg,closeImg,NULL,t,CV_MOP_CLOSE);
+	cvMorphologyEx(imageSeg, closeImg, NULL, t, CV_MOP_OPEN);
 	cvShowImage("closeImg",closeImg);
-	cvWaitKey(5);
+	cvShowImage("imageSeg", imageSeg);
+	//cvWaitKey(5);
 
 #if ISDEBUG_TL
 	//imageNoiseRem=noiseRemoval(imageSeg);
@@ -246,7 +269,7 @@ void TLDetectionPerFrame(IplImage *frame,float *TLDSend)
 	//cvWaitKey(5);
 #endif
 	//componentExtraction(imageNoiseRem,resize_TLR,TLDSend,found_TL);
-	componentExtractionTL(closeImg,resize_TLR,TLDSend);
+	componentExtractionTL(imageSeg, resize_TLR, TLDSend);
 	cvReleaseImage(&imageSeg);
 	//cvReleaseImage(&imageNoiseRem);
 	cvReleaseImage(&closeImg);
@@ -696,17 +719,21 @@ void openMP_MultiThreadVideo()
 	bool saveFlag=false;
 	IplImage * frame,*copyFrame; 
 	float connectResult[8]={0,0,0,0,0,0,0,0};
-	cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\changshu data\\TL\\Video_20151027102345.avi");
+	cap=cvCreateFileCapture("D:\\JY\\JY_TrainingSamples\\BroadView\\tmp\\fc2_save_2016-08-10-123509-0000.avi");
 	//cap=cvCreateFileCapture("CamraVideo\\Video_20160331093825.avi");
 	float startTime=1000*(float)getTickCount()/getTickFrequency();
 	CvVideoWriter * writer=NULL;
+
+#if IS_SHOW_RESULT
 	int curPos=0;//current video frame position
 	int frameNum=(int)cvGetCaptureProperty(cap,CV_CAP_PROP_FRAME_COUNT);
 	cvNamedWindow("TL");
 	if(frameNum!=0)  
 		cvCreateTrackbar("position", "TL", &g_slider_position, frameNum,onTrackbarSlide);  
+#endif
 	//findColorRange();
-
+	CvRect roi;
+	roi.x = 400, roi.y = 200, roi.width = 800, roi.height = 600;
 	if (saveFlag)
 	{
 		SYSTEMTIME stTime;
@@ -723,16 +750,28 @@ void openMP_MultiThreadVideo()
 
 		int start=cvGetTickCount();
 		frame=cvQueryFrame(cap);
+		cvSetImageROI(frame, roi);
+#if IS_SHOW_RESULT
 		curPos=cvGetCaptureProperty(cap,CV_CAP_PROP_POS_FRAMES);
 		cvSetTrackbarPos("position","TL",curPos);
+#endif
 		if(!frame)break;
 		//MultiThread
 #if ISDEBUG_TL
 		//cvNamedWindow("imgseg");
 #endif
-		copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
-		cvCopy(frame,copyFrame);
+		//copyFrame=cvCreateImage(Size(frame->width,frame->height),frame->depth,frame->nChannels);
+		copyFrame = cvCreateImage(Size(roi.width, roi.height), frame->depth, frame->nChannels);
+		/*Mat in(frame);
+		Mat out = HomomorphicFilter(in, 0.8);*/
+		//copyFrame = &IplImage(out);
 		
+		//imshow("out", out);
+		//copyFrame->imageData=(char*)out.data;
+		
+		cvCopy(frame,copyFrame);
+		//cvShowImage("colorConsitency", copyFrame);
+
 #if OPENMP
 #pragma omp parallel sections
 		{
@@ -764,9 +803,9 @@ void openMP_MultiThreadVideo()
 		cvRectangle(resize_TLR, Point(0, 0), Point(800, 20), CV_RGB(0, 0, 0), -1);
 		cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5f, 0.5f, 1);
 		cvPutText(resize_TLR, text, Point(0, 16), &font,CV_RGB(255,255,255));
-		cvNamedWindow("TL");
+		cvNamedWindow("TL", WINDOW_NORMAL);
 		cvShowImage("TL",resize_TLR);
-		cvWaitKey(5);
+
 		//show the detection  result of TSR
 		/*namedWindow("TSR");
 		imshow("TSR",re_src);
@@ -863,10 +902,13 @@ void openMP_MultiThreadCamera()
 		cvNamedWindow("imgseg");
 #endif
 		//copyFrame=cvCloneImage(frame);
-		copyFrame=cvCreateImage(Size(800,600),src_frame->depth,src_frame->nChannels);
+		CvRect roi;
+		roi.x = 400, roi.y = 200, roi.width = 800, roi.height = 600;
+		cvSetImageROI(src_frame, roi);
+		copyFrame = cvCreateImage(Size(roi.width, roi.height), src_frame->depth, src_frame->nChannels);
 		//cvResize(src_frame,frame);
-		//cvCopy(frame,copyFrame);
-		cvResize(src_frame,copyFrame);
+		cvCopy(src_frame,copyFrame);
+		//cvResize(src_frame,copyFrame);
 
 #if OPENMP
 #pragma omp parallel sections
