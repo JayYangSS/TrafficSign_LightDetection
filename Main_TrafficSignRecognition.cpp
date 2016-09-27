@@ -882,7 +882,7 @@ void openMP_MultiThreadCamera()
 	SYSTEMTIME stTime;
 	GetLocalTime(&stTime);
 	char *videoPath = new char[100];// "D:/123.dat";
-	sprintf(videoPath, "CamraVideo//Video_%04d%02d%02d%02d%02d%02d.avi", stTime.wYear, stTime.wMonth, stTime.wDay, stTime.wHour, stTime.wMinute, stTime.wSecond);
+	sprintf(videoPath, "CameraVideo//Video_%04d%02d%02d%02d%02d%02d.avi", stTime.wYear, stTime.wMonth, stTime.wDay, stTime.wHour, stTime.wMinute, stTime.wSecond);
 	CvVideoWriter *writer = cvCreateVideoWriter(videoPath,CV_FOURCC('X','V','I','D'),10,Size(800,600),1);
 #endif
 
