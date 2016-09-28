@@ -16,7 +16,7 @@ extern vector<RectTracker> trackedObj;//当前被跟踪的目标
 
 extern int const containerLen;
 
-bool isCorrelate(Rect &r1, Rect &r2){
+bool inline isCorrelate(Rect &r1, Rect &r2){
 	Rect r = r1&r2;
 	if (r.width == 0 && r.height == 0)return false;
 	else
@@ -179,6 +179,7 @@ void componentExtractionTL(IplImage* inputImage,IplImage* srcImage,float* TLDSen
 			int color = trackedObj[i].trackedBox.color;
 			CvScalar drawColor = (color == GREEN_PIXEL_LABEL) ? cvScalar(0, 255, 0) : cvScalar(0, 0, 255);
 			cvRectangle(srcImage, cvPoint(drawRect.x, drawRect.y), cvPoint(drawRect.x + drawRect.width, drawRect.y + drawRect.height), drawColor, 2);
+			if (color == GREEN_PIXEL_LABEL)continue;
 			switch (trackedObj[i].trackedBox.shape)
 			{
 			case 0:
