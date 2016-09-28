@@ -11,3 +11,6 @@ BP neural network to recognize the traffic signs accurately.
 On the master branch, this project doesn't use Kalman Filter, so the directory`KalmanFilter`,`HungarianAlg`,`Tracker` are excluded from this project. The structure of the project is like this:
 
 ![TLR](http://7xniym.com1.z0.glb.clouddn.com/TLR_Structure.png)
+
+
+'isTL_Trainingsamples.zip' is the training samples training for 'isVerticalTL.xml' and 'isHorzTL.xml', 'TLRec.zip' is the training samples training for 'TLRec.xml'.
